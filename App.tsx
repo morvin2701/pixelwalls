@@ -219,6 +219,17 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    // Clear authentication state
+    setIsAuthenticated(false);
+    setGeminiApiKey(null);
+    // Clear stored API key
+    localStorage.removeItem('geminiApiKey');
+    // Clear wallpapers
+    setWallpapers(INITIAL_WALLPAPERS);
+    localStorage.removeItem('pixelWalls');
+  };
+
   const handleGenerate = async (params: GenerationParams) => {
     // 1. Validate API Key existence before attempting anything
     const hasKey = await validateApiKey();
@@ -471,6 +482,12 @@ const App: React.FC = () => {
                 >
                   <Heart className="w-4 h-4" />
                   <span className="text-sm font-medium hidden md:inline">Favorites</span>
+                </button>
+                <button 
+                  onClick={handleLogout}
+                  className="relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors text-zinc-500 hover:text-zinc-300"
+                >
+                  <span className="text-sm font-medium">Logout</span>
                 </button>
               </div>
             </div>
