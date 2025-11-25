@@ -191,6 +191,7 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ViewMode>('gallery');
   const [mobileTab, setMobileTab] = useState<'create' | 'explore'>('create');
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>(INITIAL_WALLPAPERS);
@@ -200,7 +201,7 @@ const App: React.FC = () => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   
-  const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey();
+  const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey(geminiApiKey);
   
   const handleLogin = (username: string, password: string, apiKey: string) => {
     // Validate credentials
@@ -209,8 +210,9 @@ const App: React.FC = () => {
     // Check if username is 'abc' (case insensitive) and password is '123'
     if (username.toLowerCase() === 'abc' && password === '123') {
       setIsAuthenticated(true);
-      // In a real app, you might want to store the API key in localStorage or context
-      // localStorage.setItem('geminiApiKey', apiKey);
+      setGeminiApiKey(apiKey);
+      // Also store in localStorage for persistence across sessions
+      localStorage.setItem('geminiApiKey', apiKey);
     } else {
       // In a real app, you would show an error message
       alert('Invalid credentials. Please use username "abc" and password "123".');
@@ -229,7 +231,7 @@ const App: React.FC = () => {
     
     try {
       // We now expect enhancedPrompt in the response
-      const { imageBase64, mimeType, enhancedPrompt } = await generateWallpaperImage(params);
+      const { imageBase64, mimeType, enhancedPrompt } = await generateWallpaperImage(params, geminiApiKey || undefined);
       
       const newWallpaper: Wallpaper = {
         id: crypto.randomUUID(),

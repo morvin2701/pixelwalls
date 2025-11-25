@@ -10,15 +10,19 @@ interface AIStudio {
   openSelectKey: () => Promise<void>;
 }
 
-export const useApiKey = () => {
+export const useApiKey = (storedApiKey?: string | null) => {
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
 
   const validateApiKey = useCallback(async (): Promise<boolean> => {
     // Check if we're running in AI Studio environment
     const aistudio = (window as any).aistudio as AIStudio | undefined;
     
-    // If running locally, bypass AI Studio validation and rely on environment variable
+    // If running locally, check for stored API key first, then environment variable
     if (!aistudio) {
+      // Check if API key is provided via props (from login)
+      if (storedApiKey) {
+        return true;
+      }
       // Check if API key is set in environment variables
       if (process.env.GEMINI_API_KEY) {
         return true;
@@ -42,7 +46,7 @@ export const useApiKey = () => {
       }
     }
     return true;
-  }, []);
+  }, [storedApiKey]);
 
   const handleApiKeyDialogContinue = useCallback(async () => {
     setShowApiKeyDialog(false);

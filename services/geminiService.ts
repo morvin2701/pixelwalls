@@ -6,14 +6,14 @@
 import { GoogleGenAI, Modality } from '@google/genai';
 import { GenerationParams, STYLE_PRESETS } from '../types';
 
-export const generateWallpaperImage = async (params: GenerationParams): Promise<{ imageBase64: string; mimeType: string; enhancedPrompt: string }> => {
+export const generateWallpaperImage = async (params: GenerationParams, apiKey?: string): Promise<{ imageBase64: string; mimeType: string; enhancedPrompt: string }> => {
   // Initialize the client inside the function to ensure it picks up the latest API_KEY 
   // if the user selects it via the AIStudio overlay during the session.
-  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('API key is missing. Please set GEMINI_API_KEY in your .env.local file.');
+  const resolvedApiKey = apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+  if (!resolvedApiKey) {
+    throw new Error('API key is missing. Please provide a valid Gemini API key.');
   }
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: resolvedApiKey });
   
   // Log the parameters for debugging
   console.log('Generation parameters:', params);
