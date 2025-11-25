@@ -455,37 +455,40 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-sm relative">
-                {/* Sliding Tab Background */}
-                <motion.div 
-                  className="absolute top-1 bottom-1 rounded-lg bg-zinc-700 shadow-sm z-0"
-                  layoutId="tab-background"
-                  initial={false}
-                  animate={{
-                    left: activeTab === 'gallery' ? 4 : '50%',
-                    width: activeTab === 'gallery' ? 'calc(50% - 6px)' : 'calc(50% - 4px)',
-                    x: activeTab === 'favorites' ? 2 : 0
-                  }}
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                />
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-sm relative">
+                  {/* Sliding Tab Background */}
+                  <motion.div 
+                    className="absolute top-1 bottom-1 rounded-lg bg-zinc-700 shadow-sm z-0"
+                    layoutId="tab-background"
+                    initial={false}
+                    animate={{
+                      left: activeTab === 'gallery' ? 4 : '50%',
+                      width: activeTab === 'gallery' ? 'calc(50% - 6px)' : 'calc(50% - 4px)',
+                      x: activeTab === 'favorites' ? 2 : 0
+                    }}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
 
-                <button 
-                  onClick={() => setActiveTab('gallery')}
-                  className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'gallery' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                  <span className="text-sm font-medium hidden md:inline">Gallery</span>
-                </button>
-                <button 
-                  onClick={() => setActiveTab('favorites')}
-                  className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'favorites' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                >
-                  <Heart className="w-4 h-4" />
-                  <span className="text-sm font-medium hidden md:inline">Favorites</span>
-                </button>
+                  <button 
+                    onClick={() => setActiveTab('gallery')}
+                    className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'gallery' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                    <span className="text-sm font-medium hidden md:inline">Gallery</span>
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('favorites')}
+                    className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'favorites' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  >
+                    <Heart className="w-4 h-4" />
+                    <span className="text-sm font-medium hidden md:inline">Favorites</span>
+                  </button>
+                </div>
+                
                 <button 
                   onClick={handleLogout}
-                  className="relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors text-zinc-500 hover:text-zinc-300"
+                  className="flex items-center justify-center px-4 py-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
                 >
                   <span className="text-sm font-medium">Logout</span>
                 </button>
