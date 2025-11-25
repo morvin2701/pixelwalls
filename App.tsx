@@ -9,10 +9,12 @@ import { GeneratorControls } from './components/GeneratorControls';
 import { ImageGrid } from './components/ImageGrid';
 import { ImageModal } from './components/ImageModal';
 import { ApiKeyDialog } from './components/ApiKeyDialog';
+import { PremiumModal } from './components/PremiumModal';
 import { Wallpaper, ViewMode, GenerationParams } from './types';
 import { generateWallpaperImage } from './services/geminiService';
 import { useApiKey } from './hooks/useApiKey';
-import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle } from 'lucide-react';
+import { paymentService } from './services/paymentService';
+import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Initial Placeholder Data
@@ -61,7 +63,129 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     aspectRatio: '16:9',
     createdAt: Date.now() - 40000,
     favorite: false
-  }
+  },
+  // Example of how to add local images from the assets folder:
+  {
+    id: 'init-6',
+    url: '/assets/images/Beaches1.png',
+    prompt: 'Minimalist aerial drone shot of white waves crashing onto a black sand beach, high contrast, clean lines, lone person walking, moody atmosphere. --ar 9:16',
+    resolution: '4K',
+    aspectRatio: '9:16', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: false // or true
+  },
+
+  {
+    id: 'init-7',
+    url: '/assets/images/Beaches2.png',
+    prompt: 'A lone palm tree silhouette against a soft pastel sunset sky over the ocean, pink, orange, and soft blue gradients, calm water, dreamy vibe. --ar 9:16',
+    resolution: '4K',
+    aspectRatio: '9:16', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: true // or true
+  },
+
+  {
+    id: 'init-8',
+    url: '/assets/images/Driedplants.png',
+    prompt: 'A sweeping landscape of rolling hills covered in dried pampas grass at golden hour, warm mocha and cream color palette, soft light, gentle wind, cinematic composition. --ar 16:9',
+    resolution: '4K',
+    aspectRatio: '16:9', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: false // or true
+  },
+
+  {
+    id: 'init-9',
+    url: '/assets/images/Leaf.png',
+    prompt: 'Macro photography of a fern leaf covered in morning dew, deep sage green and warm brown tones, soft diffused forest light, shallow depth of field, organic texture, 8k resolution. --ar 9:16',
+    resolution: '4K',
+    aspectRatio: '9:16', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: false // or true
+  },
+
+  {
+    id: 'init-10',
+    url: '/assets/images/Leaf2.png',
+    prompt: 'A vertical shot looking up through a canopy of ancient trees in a misty forest, sun rays filtering through fog, moody atmosphere, cinematic grading. --ar 9:',
+    resolution: '4K',
+    aspectRatio: '9:16', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: false // or true
+  },
+
+  {
+    id: 'init-11',
+    url: '/assets/images/LordShiva1.png',
+    prompt: '“Traditional Indian painting style of Lord Shiva, soft watercolor texture, Mount Kailash in background, Nandi beside him, peaceful divine expression, warm tones, highly detailed, spiritual artwork, 16:9 aspect ratio, 8K.”',
+    resolution: '4K',
+    aspectRatio: '16:9', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: false // or true
+  },
+
+  {
+    id: 'init-12',
+    url: '/assets/images/LordShiva2.png',
+    prompt: '“Lord Shiva sitting in deep meditation on Kailash mountain, glowing blue aura, trishul beside him, flowing ash-covered hair, crescent moon shining, Himalaya background with dramatic clouds, ultra-realistic style, 16:9 aspect ratio, 8K resolution, divine lighting, peaceful but powerful atmosphere, cinematic look.”',
+    resolution: '4K',
+    aspectRatio: '16:9', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: false // or true
+  },
+
+  {
+    id: 'init-13',
+    url: '/assets/images/Dubai-1.png',
+    prompt: 'A vertical drone shot looking down at the Burj Khalifa tower cutting through the clouds at sunrise, golden light reflecting off the glass facade, futuristic city below, high detail. --ar 16:9',
+    resolution: '4K',
+    aspectRatio: '16:9', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: false // or true
+  },
+
+  {
+    id: 'init-14',
+    url: '/assets/images/Dubai-2.png',
+    prompt: 'Street-level view looking up at towering modern skyscrapers in Dubai Marina, reflections in a puddle, "blue hour" evening light with city lights turning on, cyberpunk vibe. --ar 16:9',
+    resolution: '4K',
+    aspectRatio: '16:9', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: false // or true
+  },
+
+  {
+    id: 'init-15',
+    url: '/assets/images/Dubai-3.png',
+    prompt: 'A wide skyline view of Downtown Dubai from across the water at sunset, Burj Khalifa and other towers silhouetted against an orange and purple sky, cinematic, 8k. --ar 16:9',
+    resolution: '4K',
+    aspectRatio: '16:9', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: true // or true
+  },
+
+  {
+    id: 'init-16',
+    url: '/assets/images/Forest.png',
+    prompt: 'A vertical shot looking up through a canopy of ancient trees in a misty forest, sun rays filtering through fog, moody atmosphere, cinematic grading. --ar 9:16',
+    resolution: '4K',
+    aspectRatio: '9:16', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: true // or true
+  },
+
+  {
+    id: 'init-17',
+    url: '/assets/images/LordShiva3.png',
+    prompt: '“Traditional Indian painting style of Lord Shiva, soft watercolor texture, Mount Kailash in background, Nandi beside him, peaceful divine expression, warm tones, highly detailed, spiritual artwork, 16:9 aspect ratio, 8K.”',
+    resolution: '4K',
+    aspectRatio: '16:9', // or '9:16' or '1:1'
+    createdAt: Date.now(),
+    favorite: true // or true
+  },
+
+
 ];
 
 const App: React.FC = () => {
@@ -71,6 +195,8 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
   
   const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey();
 
@@ -134,6 +260,56 @@ const App: React.FC = () => {
     }
   }, [selectedWallpaper]);
 
+  const handlePurchase = async (planId: string) => {
+    try {
+      // Create order through backend
+      const orderData = await paymentService.createOrder({ planId });
+      
+      // Prepare Razorpay options
+      const options = {
+        key: process.env.RAZORPAY_KEY_ID || 'rzp_test_your_key_here',
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'PixelWalls',
+        description: orderData.plan.description,
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          // Verify payment through backend
+          const verificationResult = await paymentService.verifyPayment({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature
+          });
+          
+          if (verificationResult.success) {
+            setIsPremium(true);
+            setShowPremiumModal(false);
+            alert(`Thank you for purchasing the ${orderData.plan.name} plan! Enjoy your premium features.`);
+          } else {
+            alert('Payment verification failed. Please contact support.');
+          }
+        },
+        prefill: {
+          name: '',
+          email: '',
+          contact: ''
+        },
+        notes: {
+          plan_id: planId
+        },
+        theme: {
+          color: '#6366f1'
+        }
+      };
+      
+      // Initialize payment
+      await paymentService.initiatePayment(options);
+    } catch (error) {
+      console.error('Payment failed:', error);
+      alert('Payment failed. Please try again.');
+    }
+  };
+
   const displayedWallpapers = activeTab === 'favorites' 
     ? wallpapers.filter(w => w.favorite) 
     : wallpapers;
@@ -145,6 +321,17 @@ const App: React.FC = () => {
       <AnimatePresence>
         {showApiKeyDialog && (
           <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />
+        )}
+      </AnimatePresence>
+
+      {/* Premium Modal */}
+      <AnimatePresence>
+        {showPremiumModal && (
+          <PremiumModal 
+            isOpen={showPremiumModal}
+            onClose={() => setShowPremiumModal(false)}
+            onPurchase={handlePurchase}
+          />
         )}
       </AnimatePresence>
 
@@ -180,6 +367,13 @@ const App: React.FC = () => {
                Pixel<span className="text-white/40">Walls</span>
              </span>
            </div>
+           <button 
+             onClick={() => setShowPremiumModal(true)}
+             className="ml-auto flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-amber-500/30"
+           >
+             <Crown size={16} />
+             {isPremium ? 'Premium' : 'Go Premium'}
+           </button>
         </div>
 
         {/* Controls */}
