@@ -10,6 +10,7 @@ import { ImageGrid } from './components/ImageGrid';
 import { ImageModal } from './components/ImageModal';
 import { ApiKeyDialog } from './components/ApiKeyDialog';
 import { PremiumModal } from './components/PremiumModal';
+import { LoginPage } from './components/LoginPage';
 import { Wallpaper, ViewMode, GenerationParams } from './types';
 import { generateWallpaperImage } from './services/geminiService';
 import { useApiKey } from './hooks/useApiKey';
@@ -189,6 +190,7 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
 ];
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<ViewMode>('gallery');
   const [mobileTab, setMobileTab] = useState<'create' | 'explore'>('create');
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>(INITIAL_WALLPAPERS);
@@ -199,6 +201,21 @@ const App: React.FC = () => {
   const [isPremium, setIsPremium] = useState(false);
   
   const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey();
+  
+  const handleLogin = (username: string, password: string, apiKey: string) => {
+    // Validate credentials
+    console.log('Login attempt:', { username, password, apiKey });
+    
+    // Check if username is 'abc' (case insensitive) and password is '123'
+    if (username.toLowerCase() === 'abc' && password === '123') {
+      setIsAuthenticated(true);
+      // In a real app, you might want to store the API key in localStorage or context
+      // localStorage.setItem('geminiApiKey', apiKey);
+    } else {
+      // In a real app, you would show an error message
+      alert('Invalid credentials. Please use username "abc" and password "123".');
+    }
+  };
 
   const handleGenerate = async (params: GenerationParams) => {
     // 1. Validate API Key existence before attempting anything
@@ -315,206 +332,210 @@ const App: React.FC = () => {
     : wallpapers;
 
   return (
-    <div className="fixed inset-0 flex bg-zinc-950 font-sans text-gray-100 selection:bg-purple-500/30 overflow-hidden">
-      
-      {/* API Key Dialog Overlay */}
-      <AnimatePresence>
-        {showApiKeyDialog && (
-          <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />
-        )}
-      </AnimatePresence>
-
-      {/* Premium Modal */}
-      <AnimatePresence>
-        {showPremiumModal && (
-          <PremiumModal 
-            isOpen={showPremiumModal}
-            onClose={() => setShowPremiumModal(false)}
-            onPurchase={handlePurchase}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Atmospheric Background Gradient (Global) */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-         <motion.div 
-            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }} 
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-indigo-900/20 rounded-full blur-[150px]" 
-         />
-         <motion.div 
-            animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }} 
-            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-purple-900/20 rounded-full blur-[150px]" 
-         />
-      </div>
-
-      {/* LEFT PANEL: Command Center */}
-      <aside className={`
-          ${mobileTab === 'create' ? 'flex' : 'hidden'} md:flex
-          w-full md:w-[420px] flex-shrink-0 flex-col 
-          border-r border-white/5 bg-zinc-900/40 backdrop-blur-xl 
-          z-20 relative shadow-2xl
-          pb-[80px] md:pb-0
-      `}>
-        {/* Logo Header */}
-        <div className="h-20 px-6 flex items-center border-b border-white/5 shrink-0">
-           <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.3)] mr-3">
-             <Sparkles className="w-4 h-4 text-white" />
-           </div>
-           <div className="flex flex-col">
-             <span className="text-xl font-bold tracking-tight text-white">
-               Pixel<span className="text-white/40">Walls</span>
-             </span>
-           </div>
-           <button 
-             onClick={() => setShowPremiumModal(true)}
-             className="ml-auto flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-amber-500/30"
-           >
-             <Crown size={16} />
-             {isPremium ? 'Premium' : 'Go Premium'}
-           </button>
-        </div>
-
-        {/* Controls */}
-        <div className="flex-1 overflow-hidden">
-           <GeneratorControls onGenerate={handleGenerate} isGenerating={isGenerating} />
-        </div>
-      </aside>
-
-      {/* RIGHT PANEL: Gallery Feed */}
-      <main className={`
-          ${mobileTab === 'explore' ? 'flex' : 'hidden'} md:flex
-          flex-1 relative flex-col z-10 w-full max-w-full overflow-x-hidden
-      `}>
-        
-        {/* Floating Header */}
-        <div className="h-20 px-4 md:px-8 flex items-center justify-between shrink-0 bg-gradient-to-b from-zinc-950 via-zinc-950/90 to-transparent z-20">
-           <div className="flex items-center gap-4">
-             <AnimatePresence mode="wait">
-                <motion.h2 
-                  key={activeTab}
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -10, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60"
-                >
-                    {activeTab === 'gallery' ? 'Explore' : 'Favorites'}
-                </motion.h2>
-             </AnimatePresence>
-             
-             <div className="hidden md:block">
-               <AnimatePresence>
-                 {isGenerating && (
-                   <motion.div 
-                     initial={{ width: 0, opacity: 0, scale: 0.9 }}
-                     animate={{ width: 'auto', opacity: 1, scale: 1 }}
-                     exit={{ width: 0, opacity: 0, scale: 0.9 }}
-                     className="flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 overflow-hidden"
-                   >
-                      <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
-                      <span className="text-xs font-medium text-purple-400 whitespace-nowrap">Creating masterpiece...</span>
-                   </motion.div>
-                 )}
-               </AnimatePresence>
-             </div>
-           </div>
-
-           <div className="flex items-center bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-sm relative">
-               {/* Sliding Tab Background */}
-               <motion.div 
-                 className="absolute top-1 bottom-1 rounded-lg bg-zinc-700 shadow-sm z-0"
-                 layoutId="tab-background"
-                 initial={false}
-                 animate={{
-                     left: activeTab === 'gallery' ? 4 : '50%',
-                     width: activeTab === 'gallery' ? 'calc(50% - 6px)' : 'calc(50% - 4px)',
-                     x: activeTab === 'favorites' ? 2 : 0
-                 }}
-                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-               />
-
-              <button 
-                onClick={() => setActiveTab('gallery')}
-                className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'gallery' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                <LayoutGrid className="w-4 h-4" />
-                <span className="text-sm font-medium hidden md:inline">Gallery</span>
-              </button>
-              <button 
-                onClick={() => setActiveTab('favorites')}
-                className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'favorites' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                <Heart className="w-4 h-4" />
-                <span className="text-sm font-medium hidden md:inline">Favorites</span>
-              </button>
-           </div>
-        </div>
-
-        {/* Error Toast */}
-        <AnimatePresence>
-            {error && (
-                <motion.div 
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="absolute top-24 left-8 right-8 mx-auto max-w-md bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-lg flex items-center justify-center z-30"
-                >
-                    <span>{error}</span>
-                    <button onClick={() => setError(null)} className="ml-4 text-red-200 hover:text-white underline text-sm">Dismiss</button>
-                </motion.div>
+    <>
+      {!isAuthenticated ? (
+        <LoginPage onLogin={handleLogin} />
+      ) : (
+        <div className="fixed inset-0 flex bg-zinc-950 font-sans text-gray-100 selection:bg-purple-500/30 overflow-hidden">
+          
+          {/* API Key Dialog Overlay */}
+          <AnimatePresence>
+            {showApiKeyDialog && (
+              <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />
             )}
-        </AnimatePresence>
+          </AnimatePresence>
 
-        {/* Grid Area */}
-        <div className="flex-1 w-full overflow-y-auto overflow-x-hidden custom-scrollbar p-4 md:p-8 pt-0 pb-[100px] md:pb-0">
-          <ImageGrid 
-            wallpapers={displayedWallpapers} 
-            onSelect={setSelectedWallpaper} 
-            onToggleFavorite={toggleFavorite}
-            isGenerating={isGenerating}
-          />
-        </div>
+          {/* Premium Modal */}
+          <AnimatePresence>
+            {showPremiumModal && (
+              <PremiumModal 
+                isOpen={showPremiumModal}
+                onClose={() => setShowPremiumModal(false)}
+                onPurchase={handlePurchase}
+              />
+            )}
+          </AnimatePresence>
 
-      </main>
+          {/* Atmospheric Background Gradient (Global) */}
+          <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+            <motion.div 
+              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }} 
+              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-indigo-900/20 rounded-full blur-[150px]" 
+            />
+            <motion.div 
+              animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }} 
+              transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+              className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-purple-900/20 rounded-full blur-[150px]" 
+            />
+          </div>
 
-      {/* MOBILE NAVIGATION BAR */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-zinc-950/95 backdrop-blur-xl border-t border-white/10 z-40 flex items-center justify-around pb-4 safe-area-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
-          <button 
+          {/* LEFT PANEL: Command Center */}
+          <aside className={`
+            ${mobileTab === 'create' ? 'flex' : 'hidden'} md:flex
+            w-full md:w-[420px] flex-shrink-0 flex-col 
+            border-r border-white/5 bg-zinc-900/40 backdrop-blur-xl 
+            z-20 relative shadow-2xl
+            pb-[80px] md:pb-0
+          `}>
+            {/* Logo Header */}
+            <div className="h-20 px-6 flex items-center border-b border-white/5 shrink-0">
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.3)] mr-3">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold tracking-tight text-white">
+                  Pixel<span className="text-white/40">Walls</span>
+                </span>
+              </div>
+              <button 
+                onClick={() => setShowPremiumModal(true)}
+                className="ml-auto flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-amber-500/30"
+              >
+                <Crown size={16} />
+                {isPremium ? 'Premium' : 'Go Premium'}
+              </button>
+            </div>
+
+            {/* Controls */}
+            <div className="flex-1 overflow-hidden">
+              <GeneratorControls onGenerate={handleGenerate} isGenerating={isGenerating} />
+            </div>
+          </aside>
+
+          {/* RIGHT PANEL: Gallery Feed */}
+          <main className={`
+            ${mobileTab === 'explore' ? 'flex' : 'hidden'} md:flex
+            flex-1 relative flex-col z-10 w-full max-w-full overflow-x-hidden
+          `}>
+            
+            {/* Floating Header */}
+            <div className="h-20 px-4 md:px-8 flex items-center justify-between shrink-0 bg-gradient-to-b from-zinc-950 via-zinc-950/90 to-transparent z-20">
+              <div className="flex items-center gap-4">
+                <AnimatePresence mode="wait">
+                  <motion.h2 
+                    key={activeTab}
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -10, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60"
+                  >
+                    {activeTab === 'gallery' ? 'Explore' : 'Favorites'}
+                  </motion.h2>
+                </AnimatePresence>
+                
+                <div className="hidden md:block">
+                  <AnimatePresence>
+                    {isGenerating && (
+                      <motion.div 
+                        initial={{ width: 0, opacity: 0, scale: 0.9 }}
+                        animate={{ width: 'auto', opacity: 1, scale: 1 }}
+                        exit={{ width: 0, opacity: 0, scale: 0.9 }}
+                        className="flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 overflow-hidden"
+                      >
+                        <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
+                        <span className="text-xs font-medium text-purple-400 whitespace-nowrap">Creating masterpiece...</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              <div className="flex items-center bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-sm relative">
+                {/* Sliding Tab Background */}
+                <motion.div 
+                  className="absolute top-1 bottom-1 rounded-lg bg-zinc-700 shadow-sm z-0"
+                  layoutId="tab-background"
+                  initial={false}
+                  animate={{
+                    left: activeTab === 'gallery' ? 4 : '50%',
+                    width: activeTab === 'gallery' ? 'calc(50% - 6px)' : 'calc(50% - 4px)',
+                    x: activeTab === 'favorites' ? 2 : 0
+                  }}
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+
+                <button 
+                  onClick={() => setActiveTab('gallery')}
+                  className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'gallery' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                  <span className="text-sm font-medium hidden md:inline">Gallery</span>
+                </button>
+                <button 
+                  onClick={() => setActiveTab('favorites')}
+                  className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'favorites' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  <Heart className="w-4 h-4" />
+                  <span className="text-sm font-medium hidden md:inline">Favorites</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Error Toast */}
+            <AnimatePresence>
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="absolute top-24 left-8 right-8 mx-auto max-w-md bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-lg flex items-center justify-center z-30"
+                >
+                  <span>{error}</span>
+                  <button onClick={() => setError(null)} className="ml-4 text-red-200 hover:text-white underline text-sm">Dismiss</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Grid Area */}
+            <div className="flex-1 w-full overflow-y-auto overflow-x-hidden custom-scrollbar p-4 md:p-8 pt-0 pb-[100px] md:pb-0">
+              <ImageGrid 
+                wallpapers={displayedWallpapers} 
+                onSelect={setSelectedWallpaper} 
+                onToggleFavorite={toggleFavorite}
+                isGenerating={isGenerating}
+              />
+            </div>
+          </main>
+
+          {/* MOBILE NAVIGATION BAR */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-zinc-950/95 backdrop-blur-xl border-t border-white/10 z-40 flex items-center justify-around pb-4 safe-area-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+            <button 
               onClick={() => setMobileTab('create')}
               className="flex flex-col items-center justify-center w-1/2 h-full space-y-1.5 active:scale-95 transition-transform"
-          >
+            >
               <div className={`p-1.5 rounded-xl transition-colors ${mobileTab === 'create' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
-                  <PlusCircle className="w-6 h-6" />
+                <PlusCircle className="w-6 h-6" />
               </div>
               <span className={`text-[10px] font-medium ${mobileTab === 'create' ? 'text-purple-400' : 'text-zinc-500'}`}>Create</span>
-          </button>
+            </button>
 
-          <button 
+            <button 
               onClick={() => setMobileTab('explore')}
               className="flex flex-col items-center justify-center w-1/2 h-full space-y-1.5 active:scale-95 transition-transform"
-          >
+            >
               <div className={`p-1.5 rounded-xl transition-colors ${mobileTab === 'explore' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
-                  <Compass className="w-6 h-6" />
+                <Compass className="w-6 h-6" />
               </div>
               <span className={`text-[10px] font-medium ${mobileTab === 'explore' ? 'text-purple-400' : 'text-zinc-500'}`}>Explore</span>
-          </button>
-      </nav>
+            </button>
+          </nav>
 
-      {/* Modal */}
-      <AnimatePresence>
-        {selectedWallpaper && (
-          <ImageModal 
-            key="modal"
-            wallpaper={selectedWallpaper} 
-            onClose={() => setSelectedWallpaper(null)}
-            onToggleFavorite={toggleFavorite}
-          />
-        )}
-      </AnimatePresence>
-
-    </div>
+          {/* Modal */}
+          <AnimatePresence>
+            {selectedWallpaper && (
+              <ImageModal 
+                key="modal"
+                wallpaper={selectedWallpaper} 
+                onClose={() => setSelectedWallpaper(null)}
+                onToggleFavorite={toggleFavorite}
+              />
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+    </>
   );
 };
 
