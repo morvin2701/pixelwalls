@@ -1,0 +1,5 @@
+{
+  "name": "High-Resolution Wallpapers",
+  "description": "A next-generation AI wallpaper creator using Gemini 3 Pro. Generate stunning backgrounds with up to 2K resolution (highest available quality).",
+  "requestFramePermissions": []
+}
