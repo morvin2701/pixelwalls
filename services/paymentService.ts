@@ -45,11 +45,11 @@ const getBackendUrl = () => {
            window.location.port === '5173';
   };
   
-  // For production, use the Render backend URL
+  // For production, use your server's IP address
   // For development, use localhost:5000
   return isDevelopment() 
     ? 'http://localhost:5000' 
-    : 'https://pixelwallsbackend.onrender.com';
+    : 'http://45.120.139.237:1433';  // Use your server's IP and port
 };
 
 export const paymentService = {
