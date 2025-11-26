@@ -296,29 +296,18 @@ const App: React.FC = () => {
       const orderData = await paymentService.createOrder({ planId });
       
       // Prepare Razorpay options
+      // For development
+      const backendUrl = typeof process !== 'undefined' && process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:5000' 
+        : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
+
       const options = {
-        key: process.env.RAZORPAY_KEY_ID || 'rzp_test_your_key_here',
+        key: 'rzp_test_RkFCO2cOtggjtn',
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'PixelWalls',
         description: orderData.plan.description,
         order_id: orderData.orderId,
-        handler: async function (response: any) {
-          // Verify payment through backend
-          const verificationResult = await paymentService.verifyPayment({
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature
-          });
-          
-          if (verificationResult.success) {
-            setIsPremium(true);
-            setShowPremiumModal(false);
-            alert(`Thank you for purchasing the ${orderData.plan.name} plan! Enjoy your premium features.`);
-          } else {
-            alert('Payment verification failed. Please contact support.');
-          }
-        },
         prefill: {
           name: '',
           email: '',
@@ -333,7 +322,15 @@ const App: React.FC = () => {
       };
       
       // Initialize payment
-      await paymentService.initiatePayment(options);
+      const paymentSuccess = await paymentService.initiatePayment(options, backendUrl);
+      
+      if (paymentSuccess) {
+        setIsPremium(true);
+        setShowPremiumModal(false);
+        alert(`Thank you for purchasing the ${orderData.plan.name} plan! Enjoy your premium features.`);
+      } else {
+        alert('Payment failed. Please try again.');
+      }
     } catch (error) {
       console.error('Payment failed:', error);
       alert('Payment failed. Please try again.');

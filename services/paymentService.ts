@@ -35,7 +35,12 @@ const loadRazorpayScript = (): Promise<boolean> => {
 export const paymentService = {
   // Create order by calling backend API
   createOrder: async (params: CreateOrderParams): Promise<OrderResponse> => {
-    const response = await fetch('http://localhost:5000/create-order', {
+    // For development
+    const backendUrl = typeof process !== 'undefined' && process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:5000' 
+      : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
+
+    const response = await fetch(`${backendUrl}/create-order`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params)
@@ -50,7 +55,12 @@ export const paymentService = {
   
   // Verify payment by calling backend API
   verifyPayment: async (params: VerifyPaymentParams): Promise<{ success: boolean }> => {
-    const response = await fetch('http://localhost:5000/verify-payment', {
+    // For development
+    const backendUrl = typeof process !== 'undefined' && process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:5000' 
+      : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
+
+    const response = await fetch(`${backendUrl}/verify-payment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params)
@@ -64,7 +74,7 @@ export const paymentService = {
   },
   
   // Initialize Razorpay checkout
-  initiatePayment: async (options: any): Promise<boolean> => {
+  initiatePayment: async (options: any, backendUrl: string): Promise<boolean> => {
     // Load Razorpay script
     const isScriptLoaded = await loadRazorpayScript();
     if (!isScriptLoaded) {
@@ -74,8 +84,31 @@ export const paymentService = {
     return new Promise((resolve) => {
       const rzp = new (window as any).Razorpay({
         ...options,
-        handler: function (response: any) {
-          resolve(true);
+        handler: async function (response: any) {
+          try {
+            // Send payment details to backend for verification
+            const verificationResponse = await fetch(`${backendUrl}/verify-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            
+            const verificationResult = await verificationResponse.json();
+            
+            if (verificationResult.success) {
+              resolve(true);
+            } else {
+              console.error('Payment verification failed:', verificationResult.error);
+              resolve(false);
+            }
+          } catch (error) {
+            console.error('Error during payment verification:', error);
+            resolve(false);
+          }
         }
       });
       
