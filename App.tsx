@@ -11,6 +11,7 @@ import { ImageModal } from './components/ImageModal';
 import { ApiKeyDialog } from './components/ApiKeyDialog';
 import { PremiumModal } from './components/PremiumModal';
 import { LoginPage } from './components/LoginPage';
+import { PaymentHistory } from './components/PaymentHistory';
 import { Wallpaper, ViewMode, GenerationParams } from './types';
 import { generateWallpaperImage } from './services/geminiService';
 import { useApiKey } from './hooks/useApiKey';
@@ -200,6 +201,36 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([
+    // Sample payment history data
+    {
+      id: '1',
+      planName: 'Basic Premium',
+      amount: 29900,
+      currency: 'INR',
+      status: 'Received',
+      date: '2025-11-20T10:30:00Z',
+      transactionId: 'txn_1234567890'
+    },
+    {
+      id: '2',
+      planName: 'Pro Premium',
+      amount: 59900,
+      currency: 'INR',
+      status: 'Rejected',
+      date: '2025-11-15T14:45:00Z',
+      transactionId: 'txn_0987654321'
+    },
+    {
+      id: '3',
+      planName: 'Basic Premium',
+      amount: 29900,
+      currency: 'INR',
+      status: 'Pending',
+      date: '2025-11-10T09:15:00Z',
+      transactionId: 'txn_1122334455'
+    }
+  ]);
   
   const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey(geminiApiKey);
   
@@ -442,7 +473,7 @@ const App: React.FC = () => {
                     transition={{ duration: 0.2 }}
                     className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60"
                   >
-                    {activeTab === 'gallery' ? 'Explore' : 'Favorites'}
+                    {activeTab === 'gallery' ? 'Explore' : activeTab === 'favorites' ? 'Favorites' : 'Payment History'}
                   </motion.h2>
                 </AnimatePresence>
                 
@@ -471,9 +502,9 @@ const App: React.FC = () => {
                     layoutId="tab-background"
                     initial={false}
                     animate={{
-                      left: activeTab === 'gallery' ? 4 : '50%',
-                      width: activeTab === 'gallery' ? 'calc(50% - 6px)' : 'calc(50% - 4px)',
-                      x: activeTab === 'favorites' ? 2 : 0
+                      left: activeTab === 'gallery' ? 4 : activeTab === 'favorites' ? '33%' : '66%',
+                      width: activeTab === 'gallery' ? 'calc(33% - 6px)' : 'calc(33% - 4px)',
+                      x: activeTab === 'favorites' ? 2 : activeTab === 'paymentHistory' ? 4 : 0
                     }}
                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
@@ -491,6 +522,15 @@ const App: React.FC = () => {
                   >
                     <Heart className="w-4 h-4" />
                     <span className="text-sm font-medium hidden md:inline">Favorites</span>
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('paymentHistory')}
+                    className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'paymentHistory' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                    <span className="text-sm font-medium hidden md:inline">Payments</span>
                   </button>
                 </div>
                 
@@ -520,12 +560,16 @@ const App: React.FC = () => {
 
             {/* Grid Area */}
             <div className="flex-1 w-full overflow-y-auto overflow-x-hidden custom-scrollbar p-4 md:p-8 pt-0 pb-[100px] md:pb-0">
-              <ImageGrid 
-                wallpapers={displayedWallpapers} 
-                onSelect={setSelectedWallpaper} 
-                onToggleFavorite={toggleFavorite}
-                isGenerating={isGenerating}
-              />
+              {activeTab === 'paymentHistory' ? (
+                <PaymentHistory payments={paymentHistory} />
+              ) : (
+                <ImageGrid 
+                  wallpapers={displayedWallpapers} 
+                  onSelect={setSelectedWallpaper} 
+                  onToggleFavorite={toggleFavorite}
+                  isGenerating={isGenerating}
+                />
+              )}
             </div>
           </main>
 
