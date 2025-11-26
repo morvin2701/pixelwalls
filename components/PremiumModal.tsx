@@ -37,7 +37,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
       id: 'basic' as const,
       name: 'Basic Premium',
       price: '₹300',
-      description: 'Perfect for casual users',
+      description: 'Perfect for casual users - monthly subscription',
       features: [
         { text: 'Access to premium wallpaper library', available: true },
         { text: 'High-resolution downloads (4K)', available: true },
@@ -54,7 +54,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
       id: 'pro' as const,
       name: 'Pro Premium',
       price: '₹1000',
-      description: 'For professional creators',
+      description: 'For professional creators - monthly subscription',
       features: [
         { text: 'Full wallpaper generation capability', available: true },
         { text: 'Unlimited 4K wallpaper generation', available: true },
@@ -138,7 +138,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
                   </div>
                   <div className="text-right">
                     <div className={`text-2xl font-bold ${plan.free ? 'text-zinc-500' : 'text-white'}`}>{plan.price}</div>
-                    {!plan.free && <div className="text-zinc-400 text-sm">one-time</div>}
+                    {!plan.free && <div className="text-zinc-400 text-sm">per month</div>}
                   </div>
                 </div>
                 

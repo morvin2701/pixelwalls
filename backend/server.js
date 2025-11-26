@@ -89,14 +89,14 @@ const premiumPlans = {
   basic: {
     id: 'basic',
     name: 'Basic Premium',
-    description: 'Unlock premium wallpapers',
+    description: 'Unlock premium wallpapers - monthly subscription',
     amount: 30000, // Amount in paise (₹300)
     currency: 'INR'
   },
   pro: {
     id: 'pro',
     name: 'Pro Premium',
-    description: 'Unlock all premium features',
+    description: 'Unlock all premium features - monthly subscription',
     amount: 100000, // Amount in paise (₹1000)
     currency: 'INR'
   }
