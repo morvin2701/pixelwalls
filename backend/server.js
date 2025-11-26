@@ -8,6 +8,12 @@ const { v4: uuidv4 } = require('uuid');
 // Load environment variables
 dotenv.config();
 
+// Add this to check if environment variables are loaded correctly
+console.log('Environment variables check:');
+console.log('RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? 'SET' : 'NOT SET');
+console.log('RAZORPAY_KEY_SECRET:', process.env.RAZORPAY_KEY_SECRET ? 'SET' : 'NOT SET');
+console.log('PORT:', process.env.PORT || 5000);
+
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -36,10 +42,17 @@ app.use(cors({
 app.use(express.json());
 
 // Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+let razorpay;
+try {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+  console.log('Razorpay initialized successfully');
+} catch (error) {
+  console.error('Failed to initialize Razorpay:', error);
+  process.exit(1);
+}
 
 // Sample premium plans
 const premiumPlans = {
