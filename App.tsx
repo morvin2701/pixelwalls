@@ -489,6 +489,8 @@ const App: React.FC = () => {
       // Create order through backend, passing the username
       const orderData = await paymentService.createOrder({ planId, userId: username });
       
+      console.log('Order data received from backend:', orderData);
+      
       // Prepare Razorpay options
       const backendUrl = getBackendUrl();
 

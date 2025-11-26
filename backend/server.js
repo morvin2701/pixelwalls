@@ -421,6 +421,7 @@ app.get('/user-payment-history/:userId', (req, res) => {
   try {
     const { userId } = req.params;
     console.log(`Fetching payment history for user: ${userId}`);
+    console.log(`Available payment records:`, JSON.stringify(paymentHistory, null, 2));
     
     // Filter payment history for this user
     const userPaymentHistory = paymentHistory.filter(record => {

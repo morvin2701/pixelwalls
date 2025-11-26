@@ -148,6 +148,8 @@ export const paymentService = {
   initiatePayment: async (options: any, backendUrl: string): Promise<boolean> => {
     console.log('Initializing payment with options:', options);
     console.log('Backend URL for verification:', backendUrl);
+    console.log('Amount in paise:', options.amount);
+    console.log('Amount in rupees:', options.amount / 100);
     
     // Load Razorpay script
     const isScriptLoaded = await loadRazorpayScript();
