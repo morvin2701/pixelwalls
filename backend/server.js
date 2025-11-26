@@ -465,6 +465,125 @@ app.get('/user-payment-history/:userId', async (req, res) => {
   }
 });
 
+// Route to register a new user
+app.post('/register', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+    
+    if (pool) {
+      try {
+        // Check if user already exists
+        const checkRequest = pool.request();
+        checkRequest.input('username', sql.NVarChar, username);
+        const checkResult = await checkRequest.query(`
+          SELECT COUNT(*) as count FROM users WHERE username = @username
+        `);
+        
+        if (checkResult.recordset[0].count > 0) {
+          return res.status(400).json({ error: 'User already exists' });
+        }
+        
+        // Create new user
+        const createUserRequest = pool.request();
+        const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        createUserRequest.input('id', sql.NVarChar, userId);
+        createUserRequest.input('username', sql.NVarChar, username);
+        createUserRequest.input('created_at', sql.DateTime2, new Date());
+        
+        await createUserRequest.query(`
+          INSERT INTO users (id, username, created_at)
+          VALUES (@id, @username, @created_at)
+        `);
+        
+        console.log('User registered successfully:', username);
+        res.json({ 
+          success: true, 
+          userId: userId,
+          username: username,
+          message: 'User registered successfully'
+        });
+      } catch (dbError) {
+        console.error('Database error during registration:', dbError);
+        res.status(500).json({ error: 'Failed to register user' });
+      }
+    } else {
+      res.status(500).json({ error: 'Database connection not available' });
+    }
+  } catch (error) {
+    console.error('Error during registration:', error);
+    res.status(500).json({ error: 'Failed to register user' });
+  }
+});
+
+// Route to login a user
+app.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+    
+    // For testing purposes, we'll accept any username/password combination
+    // In a real application, you would verify the password against a hashed version
+    
+    if (pool) {
+      try {
+        // Check if user exists
+        const checkRequest = pool.request();
+        checkRequest.input('username', sql.NVarChar, username);
+        const checkResult = await checkRequest.query(`
+          SELECT id, username FROM users WHERE username = @username
+        `);
+        
+        if (checkResult.recordset.length > 0) {
+          // User exists, return user data
+          const user = checkResult.recordset[0];
+          console.log('User logged in:', username);
+          res.json({ 
+            success: true, 
+            userId: user.id,
+            username: user.username,
+            message: 'Login successful'
+          });
+        } else {
+          // User doesn't exist, create the user (for testing purposes)
+          const createUserRequest = pool.request();
+          const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          createUserRequest.input('id', sql.NVarChar, userId);
+          createUserRequest.input('username', sql.NVarChar, username);
+          createUserRequest.input('created_at', sql.DateTime2, new Date());
+          
+          await createUserRequest.query(`
+            INSERT INTO users (id, username, created_at)
+            VALUES (@id, @username, @created_at)
+          `);
+          
+          console.log('New user created and logged in:', username);
+          res.json({ 
+            success: true, 
+            userId: userId,
+            username: username,
+            message: 'User created and logged in successfully'
+          });
+        }
+      } catch (dbError) {
+        console.error('Database error during login:', dbError);
+        res.status(500).json({ error: 'Failed to login' });
+      }
+    } else {
+      res.status(500).json({ error: 'Database connection not available' });
+    }
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({ error: 'Failed to login' });
+  }
+});
+
 // Test database connection endpoint
 app.get('/test-db', async (req, res) => {
   try {

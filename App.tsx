@@ -368,20 +368,33 @@ const App: React.FC = () => {
     setShowApiKeyInputDialog(false);
   };
   
-  const handleLogin = (username: string, password: string) => {
-    // Validate credentials
+  const handleLogin = async (username: string, password: string) => {
+    // Validate credentials by calling backend
     console.log('Login attempt:', { username, password });
     
-    // Check if username is 'abc' (case insensitive) and password is '123'
-    if (username.toLowerCase() === 'abc' && password === '123') {
-      setIsAuthenticated(true);
-      setUsername(username); // Set username
-      // Save username to localStorage
-      localStorage.setItem('username', username);
-      // Don't set API key here - it will be set when needed
-    } else {
-      // In a real app, you would show an error message
-      alert('Invalid credentials. Please use username "abc" and password "123".');
+    try {
+      const backendUrl = getBackendUrl();
+      const response = await fetch(`${backendUrl}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setIsAuthenticated(true);
+        setUsername(data.username); // Set username from backend response
+        // Save username to localStorage
+        localStorage.setItem('username', data.username);
+        // Don't set API key here - it will be set when needed
+        console.log('Login successful:', data);
+      } else {
+        alert(`Login failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Login failed. Please try again.');
     }
   };
 
