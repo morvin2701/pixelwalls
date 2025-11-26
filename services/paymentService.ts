@@ -2,6 +2,7 @@
 
 interface CreateOrderParams {
   planId: string;
+  userId?: string; // Make userId optional to maintain backward compatibility
 }
 
 interface OrderResponse {
@@ -161,6 +162,9 @@ export const paymentService = {
           try {
             console.log('Payment response received:', response);
             
+            // Extract user_id from notes if available
+            const userId = options.notes?.user_id;
+            
             // Send payment details to backend for verification
             const verificationResponse = await fetch(`${backendUrl}/verify-payment`, {
               method: 'POST',
@@ -168,7 +172,8 @@ export const paymentService = {
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
+                razorpay_signature: response.razorpay_signature,
+                userId: userId // Include userId in verification
               })
             });
             
@@ -192,6 +197,9 @@ export const paymentService = {
         console.error('Payment failed:', response.error);
         
         try {
+          // Extract user_id from error metadata if available
+          const userId = response.error.metadata?.user_id;
+          
           // Send failed payment details to backend to update payment history
           const backendUrl = getBackendUrl();
           await fetch(`${backendUrl}/payment-failed`, {
@@ -199,7 +207,8 @@ export const paymentService = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               razorpay_order_id: response.error.metadata.order_id,
-              error: response.error
+              error: response.error,
+              userId: userId // Include userId in failed payment notification
             })
           });
         } catch (error) {

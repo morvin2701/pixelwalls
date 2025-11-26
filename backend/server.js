@@ -45,6 +45,7 @@ app.use(express.json());
 
 // File path for payment history
 const PAYMENT_HISTORY_FILE = path.join(__dirname, 'payment-history.json');
+const USERS_FILE = path.join(__dirname, 'users.json');
 
 // Load payment history from file or initialize empty array
 let paymentHistory;
@@ -61,6 +62,21 @@ try {
   paymentHistory = [];
 }
 
+// Load users from file or initialize empty object
+let users;
+try {
+  if (fs.existsSync(USERS_FILE)) {
+    const data = fs.readFileSync(USERS_FILE, 'utf8');
+    users = JSON.parse(data);
+    console.log('Loaded users from file:', Object.keys(users).length, 'users');
+  } else {
+    users = {};
+  }
+} catch (error) {
+  console.error('Error loading users from file:', error);
+  users = {};
+}
+
 // Save payment history to file
 const savePaymentHistory = () => {
   try {
@@ -68,6 +84,16 @@ const savePaymentHistory = () => {
     console.log('Payment history saved to file');
   } catch (error) {
     console.error('Error saving payment history to file:', error);
+  }
+};
+
+// Save users to file
+const saveUsers = () => {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+    console.log('Users saved to file');
+  } catch (error) {
+    console.error('Error saving users to file:', error);
   }
 };
 
@@ -108,7 +134,7 @@ const premiumPlans = {
 app.post('/create-order', async (req, res) => {
   try {
     console.log('Received create-order request:', JSON.stringify(req.body, null, 2));
-    const { planId } = req.body;
+    const { planId, userId } = req.body; // Extract userId from request
     
     // Validate plan
     const plan = premiumPlans[planId];
@@ -134,9 +160,10 @@ app.post('/create-order', async (req, res) => {
     const order = await razorpay.orders.create(options);
     console.log('Order created successfully:', JSON.stringify(order, null, 2));
     
-    // Store order in payment history
+    // Store order in payment history with user association
     const orderRecord = {
       id: order.id,
+      userId: userId, // Associate with user
       planId: plan.id,
       planName: plan.name,
       amount: plan.amount,
@@ -195,7 +222,7 @@ app.post('/create-order', async (req, res) => {
 app.post('/verify-payment', async (req, res) => {
   try {
     console.log('Received verify-payment request:', JSON.stringify(req.body, null, 2));
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId } = req.body; // Extract userId
     
     // Verify payment signature
     console.log('Verifying signature with key secret:', process.env.RAZORPAY_KEY_SECRET ? 'SET' : 'NOT SET');
@@ -224,6 +251,7 @@ app.post('/verify-payment', async (req, res) => {
         // If we can't find the record, create a new one for failed payments
         const newRecord = {
           id: razorpay_order_id,
+          userId: userId, // Associate with user
           status: 'Rejected',
           verifiedAt: new Date().toISOString(),
           razorpay_payment_id: razorpay_payment_id,
@@ -247,11 +275,25 @@ app.post('/verify-payment', async (req, res) => {
       paymentRecord.verifiedAt = new Date().toISOString();
       paymentRecord.razorpay_payment_id = razorpay_payment_id;
       paymentRecord.razorpay_signature = razorpay_signature;
+      // Update user's plan in the users database
+      if (userId && paymentRecord.planId) {
+        if (!users[userId]) {
+          users[userId] = { plans: [] };
+        }
+        users[userId].plans.push({
+          planId: paymentRecord.planId,
+          planName: paymentRecord.planName,
+          purchaseDate: new Date().toISOString(),
+          status: 'active'
+        });
+        saveUsers(); // Save users to file
+      }
       savePaymentHistory(); // Save to file
     } else {
       // If we can't find the record, create a new one for successful payments
       const newRecord = {
         id: razorpay_order_id,
+        userId: userId, // Associate with user
         status: 'Received',
         verifiedAt: new Date().toISOString(),
         razorpay_payment_id: razorpay_payment_id,
@@ -293,7 +335,7 @@ app.post('/verify-payment', async (req, res) => {
 app.post('/payment-failed', (req, res) => {
   try {
     console.log('Received payment failed notification:', JSON.stringify(req.body, null, 2));
-    const { razorpay_order_id, error } = req.body;
+    const { razorpay_order_id, error, userId } = req.body; // Extract userId
     
     // Update payment history with rejected status
     const paymentRecord = paymentHistory.find(record => record.id === razorpay_order_id);
@@ -306,6 +348,7 @@ app.post('/payment-failed', (req, res) => {
       // If we can't find the record, create a new one for failed payments
       const newRecord = {
         id: razorpay_order_id,
+        userId: userId, // Associate with user
         status: 'Rejected',
         verifiedAt: new Date().toISOString(),
         error: error,
@@ -322,6 +365,62 @@ app.post('/payment-failed', (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: 'Failed to handle failed payment', 
+      details: error.message 
+    });
+  }
+});
+
+// Route to get user's current plan
+app.get('/user-plan/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log(`Fetching plan for user: ${userId}`);
+    
+    // Check if user exists in our database
+    if (users[userId]) {
+      // Get the user's active plans
+      const activePlans = users[userId].plans.filter(plan => plan.status === 'active');
+      
+      // For simplicity, we'll return the most recent active plan
+      // In a real app, you might want to handle multiple active plans differently
+      const currentPlan = activePlans.length > 0 ? activePlans[activePlans.length - 1] : null;
+      
+      res.json({ 
+        userId,
+        currentPlan,
+        plans: users[userId].plans
+      });
+    } else {
+      // User not found, return base plan
+      res.json({ 
+        userId,
+        currentPlan: null,
+        plans: []
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching user plan:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch user plan', 
+      details: error.message 
+    });
+  }
+});
+
+// Route to get payment history for a specific user
+app.get('/user-payment-history/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log(`Fetching payment history for user: ${userId}`);
+    
+    // Filter payment history for this user
+    const userPaymentHistory = paymentHistory.filter(record => record.userId === userId);
+    
+    res.json(userPaymentHistory);
+  } catch (error) {
+    console.error('Error fetching user payment history:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch user payment history', 
       details: error.message 
     });
   }

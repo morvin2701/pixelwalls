@@ -193,6 +193,7 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState<string>(''); // Add username state
   const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ViewMode>('gallery');
   const [mobileTab, setMobileTab] = useState<'create' | 'explore'>('create');
@@ -218,6 +219,12 @@ const App: React.FC = () => {
       setIsPremium(savedPlan !== 'base');
     }
     
+    // Load username from localStorage
+    const savedUsername = localStorage.getItem('username');
+    if (savedUsername) {
+      setUsername(savedUsername);
+    }
+    
     // Load API key from localStorage on mount
     const savedApiKey = localStorage.getItem('geminiApiKey');
     if (savedApiKey) {
@@ -225,21 +232,98 @@ const App: React.FC = () => {
     }
   }, []);
   
+  // Fetch user's plan from backend when authenticated
+  useEffect(() => {
+    if (isAuthenticated && username) {
+      fetchUserPlan(username);
+    }
+  }, [isAuthenticated, username]);
+  
   // Fetch payment history when payment history tab is active or when showPaymentHistory changes
   useEffect(() => {
-    if (activeTab === 'paymentHistory' || showPaymentHistory) {
-      fetchPaymentHistory();
+    if ((activeTab === 'paymentHistory' || showPaymentHistory) && username) {
+      fetchUserPaymentHistory(username);
     }
-  }, [activeTab, showPaymentHistory]);
+  }, [activeTab, showPaymentHistory, username]);
   
-  const fetchPaymentHistory = async () => {
+  const fetchUserPlan = async (userId: string) => {
     try {
-      const history = await paymentService.fetchPaymentHistory();
-      setPaymentHistory(history);
+      const backendUrl = getBackendUrl();
+      const response = await fetch(`${backendUrl}/user-plan/${userId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch user plan: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('User plan data:', data);
+      
+      // Update local state with user's plan
+      if (data.currentPlan) {
+        const planId = data.currentPlan.planId;
+        if (planId === 'basic' || planId === 'pro') {
+          setCurrentUserPlan(planId);
+          setIsPremium(true);
+          // Save to localStorage for persistence
+          localStorage.setItem('currentUserPlan', planId);
+        }
+      } else {
+        // No active plan, set to base
+        setCurrentUserPlan('base');
+        setIsPremium(false);
+        localStorage.setItem('currentUserPlan', 'base');
+      }
     } catch (error) {
-      console.error('Failed to fetch payment history:', error);
+      console.error('Failed to fetch user plan:', error);
+      // Fall back to localStorage plan
+      const savedPlan = localStorage.getItem('currentUserPlan');
+      if (savedPlan && (savedPlan === 'basic' || savedPlan === 'pro')) {
+        setCurrentUserPlan(savedPlan);
+        setIsPremium(true);
+      }
+    }
+  };
+  
+  const fetchUserPaymentHistory = async (userId: string) => {
+    try {
+      const backendUrl = getBackendUrl();
+      const response = await fetch(`${backendUrl}/user-payment-history/${userId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch user payment history: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('User payment history:', data);
+      setPaymentHistory(data);
+    } catch (error) {
+      console.error('Failed to fetch user payment history:', error);
       setError('Failed to load payment history. Please try again.');
     }
+  };
+  
+  // Helper function to get backend URL
+  const getBackendUrl = () => {
+    // Determine if we're in development or production
+    const isDevelopment = () => {
+      // Check if we're running on localhost
+      return window.location.hostname === 'localhost' || 
+             window.location.hostname === '127.0.0.1' ||
+             window.location.hostname.startsWith('localhost:') ||
+             window.location.port === '3001' ||
+             window.location.port === '3000' ||
+             window.location.port === '5173';
+    };
+    
+    return isDevelopment() 
+      ? 'http://localhost:5000' 
+      : 'https://pixelwallsbackend.onrender.com';
   };
   
   const handleApiKeyInputConfirm = (apiKey: string) => {
@@ -259,6 +343,9 @@ const App: React.FC = () => {
     // Check if username is 'abc' (case insensitive) and password is '123'
     if (username.toLowerCase() === 'abc' && password === '123') {
       setIsAuthenticated(true);
+      setUsername(username); // Set username
+      // Save username to localStorage
+      localStorage.setItem('username', username);
       // Don't set API key here - it will be set when needed
     } else {
       // In a real app, you would show an error message
@@ -269,9 +356,15 @@ const App: React.FC = () => {
   const handleLogout = () => {
     // Clear authentication state
     setIsAuthenticated(false);
+    setUsername('');
     setGeminiApiKey(null);
-    // Clear stored API key
+    // Clear stored data
+    localStorage.removeItem('username');
     localStorage.removeItem('geminiApiKey');
+    localStorage.removeItem('currentUserPlan');
+    // Reset plan to base
+    setCurrentUserPlan('base');
+    setIsPremium(false);
     // Clear wallpapers
     setWallpapers(INITIAL_WALLPAPERS);
     localStorage.removeItem('pixelWalls');
@@ -361,25 +454,11 @@ const App: React.FC = () => {
     }
 
     try {
-      // Create order through backend
-      const orderData = await paymentService.createOrder({ planId });
+      // Create order through backend, passing the username
+      const orderData = await paymentService.createOrder({ planId, userId: username });
       
       // Prepare Razorpay options
-      // Determine if we're in development or production
-      const isDevelopment = () => {
-        // Check if we're running on localhost
-        return window.location.hostname === 'localhost' || 
-               window.location.hostname === '127.0.0.1' ||
-               window.location.hostname.startsWith('localhost:') ||
-               window.location.port === '3001' ||
-               window.location.port === '3000' ||
-               window.location.port === '5173';
-      };
-      
-      // For development
-      const backendUrl = isDevelopment() 
-        ? 'http://localhost:5000' 
-        : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
+      const backendUrl = getBackendUrl();
 
       const options = {
         key: 'rzp_test_RkFCO2cOtggjtn',
@@ -389,12 +468,13 @@ const App: React.FC = () => {
         description: orderData.plan.description,
         order_id: orderData.orderId,
         prefill: {
-          name: '',
+          name: username,
           email: '',
           contact: ''
         },
         notes: {
-          plan_id: planId
+          plan_id: planId,
+          user_id: username
         },
         theme: {
           color: '#6366f1'
@@ -411,19 +491,20 @@ const App: React.FC = () => {
         setCurrentUserPlan(planId as 'basic' | 'pro');
         // Save to localStorage for persistence across page refreshes
         localStorage.setItem('currentUserPlan', planId);
-        // Refresh payment history to show the new transaction
-        fetchPaymentHistory();
+        // Refresh user's plan and payment history to show the new transaction
+        fetchUserPlan(username);
+        fetchUserPaymentHistory(username);
         alert(`Thank you for purchasing the ${orderData.plan.name} plan! Enjoy your premium features.`);
       } else {
         alert('Payment was not successful. Please try again.');
         // Refresh payment history to show the failed transaction
-        fetchPaymentHistory();
+        fetchUserPaymentHistory(username);
       }
     } catch (error) {
       console.error('Payment failed:', error);
       alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
       // Refresh payment history to show the failed transaction
-      fetchPaymentHistory();
+      fetchUserPaymentHistory(username);
     }
   };
 
