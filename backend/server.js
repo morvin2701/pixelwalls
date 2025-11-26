@@ -204,12 +204,17 @@ app.post('/create-order', async (req, res) => {
       amount: correctedAmount,
       currency: plan.currency,
       plan: {
-        ...plan,
-        amount: correctedAmount
+        id: plan.id,
+        name: plan.name,
+        description: plan.description,
+        amount: correctedAmount,
+        currency: plan.currency
       }
     };
     
-    console.log('Sending response:', JSON.stringify(response, null, 2));
+    console.log('Final response being sent to frontend:', JSON.stringify(response, null, 2));
+    console.log('Response amount in paise:', response.amount);
+    console.log('Response amount in rupees:', response.amount / 100);
     res.json(response);
   } catch (error) {
     console.error('Error creating order:');

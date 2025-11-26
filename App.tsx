@@ -497,9 +497,19 @@ const App: React.FC = () => {
       // Prepare Razorpay options
       const backendUrl = getBackendUrl();
 
+      // Force correct amounts for Razorpay
+      let razorpayAmount = orderData.amount;
+      if (planId === 'pro') {
+        razorpayAmount = 100000; // ₹1000
+        console.log('Forcing Razorpay amount to 100000 paise (₹1000) for Pro plan');
+      } else if (planId === 'basic') {
+        razorpayAmount = 30000; // ₹300
+        console.log('Forcing Razorpay amount to 30000 paise (₹300) for Basic plan');
+      }
+
       const options = {
         key: 'rzp_test_RkFCO2cOtggjtn',
-        amount: orderData.amount,
+        amount: razorpayAmount,
         currency: orderData.currency,
         name: 'PixelWalls',
         description: orderData.plan.description,
