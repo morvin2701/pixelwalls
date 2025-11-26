@@ -88,10 +88,13 @@ app.post('/create-order', async (req, res) => {
     console.log('Creating order for plan:', JSON.stringify(plan, null, 2));
     
     // Create Razorpay order
+    // Fix: Shorten the receipt ID to be under 40 characters
+    const receiptId = `receipt_${Date.now()}`.substring(0, 40);
+    
     const options = {
       amount: plan.amount,
       currency: plan.currency,
-      receipt: `receipt_${uuidv4()}`,
+      receipt: receiptId,
     };
     
     console.log('Razorpay order options:', JSON.stringify(options, null, 2));
