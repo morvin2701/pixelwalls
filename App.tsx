@@ -485,6 +485,7 @@ const App: React.FC = () => {
     }
 
     try {
+      console.log('Creating order for user:', username);
       // Create order through backend, passing the username
       const orderData = await paymentService.createOrder({ planId, userId: username });
       
@@ -511,6 +512,8 @@ const App: React.FC = () => {
           color: '#6366f1'
         }
       };
+      
+      console.log('Payment options with user ID:', options);
       
       // Initialize payment
       const paymentSuccess = await paymentService.initiatePayment(options, backendUrl);

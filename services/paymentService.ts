@@ -164,6 +164,7 @@ export const paymentService = {
             
             // Extract user_id from notes if available
             const userId = options.notes?.user_id;
+            console.log('User ID from payment options:', userId);
             
             // Send payment details to backend for verification
             const verificationResponse = await fetch(`${backendUrl}/verify-payment`, {
@@ -199,6 +200,7 @@ export const paymentService = {
         try {
           // Extract user_id from error metadata if available
           const userId = response.error.metadata?.user_id;
+          console.log('User ID from failed payment:', userId);
           
           // Send failed payment details to backend to update payment history
           const backendUrl = getBackendUrl();

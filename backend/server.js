@@ -56,6 +56,8 @@ try {
     console.log('Loaded payment history from file:', paymentHistory.length, 'records');
   } else {
     paymentHistory = [];
+    // Save empty array to create the file
+    savePaymentHistory();
   }
 } catch (error) {
   console.error('Error loading payment history from file:', error);
@@ -71,6 +73,8 @@ try {
     console.log('Loaded users from file:', Object.keys(users).length, 'users');
   } else {
     users = {};
+    // Save empty object to create the file
+    saveUsers();
   }
 } catch (error) {
   console.error('Error loading users from file:', error);
@@ -172,6 +176,8 @@ app.post('/create-order', async (req, res) => {
       createdAt: new Date().toISOString(),
       receipt: receiptId
     };
+    
+    console.log('Creating order record with user ID:', orderRecord);
     
     paymentHistory.push(orderRecord);
     savePaymentHistory(); // Save to file
@@ -277,6 +283,7 @@ app.post('/verify-payment', async (req, res) => {
       paymentRecord.razorpay_signature = razorpay_signature;
       // Update user's plan in the users database
       if (userId && paymentRecord.planId) {
+        console.log(`Updating user ${userId} with plan ${paymentRecord.planId}`);
         if (!users[userId]) {
           users[userId] = { plans: [] };
         }
@@ -300,6 +307,7 @@ app.post('/verify-payment', async (req, res) => {
         razorpay_signature: razorpay_signature,
         createdAt: new Date().toISOString()
       };
+      console.log('Creating new payment record with user ID:', newRecord);
       paymentHistory.push(newRecord);
       savePaymentHistory(); // Save to file
     }
@@ -354,6 +362,7 @@ app.post('/payment-failed', (req, res) => {
         error: error,
         createdAt: new Date().toISOString()
       };
+      console.log('Creating new failed payment record with user ID:', newRecord);
       paymentHistory.push(newRecord);
       savePaymentHistory(); // Save to file
     }
@@ -414,12 +423,19 @@ app.get('/user-payment-history/:userId', (req, res) => {
     console.log(`Fetching payment history for user: ${userId}`);
     
     // Filter payment history for this user
-    const userPaymentHistory = paymentHistory.filter(record => record.userId === userId);
+    const userPaymentHistory = paymentHistory.filter(record => {
+      // Log each record for debugging
+      console.log(`Checking record:`, JSON.stringify(record, null, 2));
+      console.log(`Record userId: ${record.userId}, Requested userId: ${userId}`);
+      console.log(`Match: ${record.userId === userId}`);
+      return record.userId === userId;
+    });
     
     // Ensure we always return an array, even if empty
     const result = Array.isArray(userPaymentHistory) ? userPaymentHistory : [];
     
     console.log(`Found ${result.length} payment records for user ${userId}`);
+    console.log(`Result:`, JSON.stringify(result, null, 2));
     res.json(result);
   } catch (error) {
     console.error('Error fetching user payment history:', error);
