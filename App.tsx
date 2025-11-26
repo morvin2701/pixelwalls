@@ -720,20 +720,20 @@ const App: React.FC = () => {
           </main>
 
           {/* MOBILE NAVIGATION BAR */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-zinc-950/95 backdrop-blur-xl border-t border-white/10 z-40 flex items-center justify-around pb-4 safe-area-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-zinc-950/95 backdrop-blur-xl border-t border-white/10 z-40 flex items-center justify-between px-4 pb-4 safe-area-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
             <button 
               onClick={() => setMobileTab('create')}
-              className="flex flex-col items-center justify-center w-1/2 h-full space-y-1.5 active:scale-95 transition-transform"
+              className="flex flex-col items-center justify-center w-1/3 h-full space-y-1.5 active:scale-95 transition-transform"
             >
               <div className={`p-1.5 rounded-xl transition-colors ${mobileTab === 'create' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
                 <PlusCircle className="w-6 h-6" />
               </div>
               <span className={`text-[10px] font-medium ${mobileTab === 'create' ? 'text-purple-400' : 'text-zinc-500'}`}>Create</span>
             </button>
-
+            
             <button 
               onClick={() => setMobileTab('explore')}
-              className="flex flex-col items-center justify-center w-1/2 h-full space-y-1.5 active:scale-95 transition-transform"
+              className="flex flex-col items-center justify-center w-1/3 h-full space-y-1.5 active:scale-95 transition-transform"
             >
               <div className={`p-1.5 rounded-xl transition-colors ${mobileTab === 'explore' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
                 <Compass className="w-6 h-6" />
