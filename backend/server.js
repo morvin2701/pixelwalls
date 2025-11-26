@@ -29,18 +29,25 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:3000',
+      'http://localhost:5000',
       'https://pixelwalls-wzsz.vercel.app',
-      'https://pixelwallsbackend.onrender.com'  // Your Render backend URL
+      'https://pixelwallsbackend.onrender.com'
     ];
+    
+    // Also allow any render.com subdomain
+    if (origin && (origin.endsWith('.onrender.com') || origin.endsWith('.vercel.app'))) {
+      return callback(null, true);
+    }
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true
-}));
+}));;
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -386,59 +393,7 @@ app.post('/verify-payment', async (req, res) => {
   }
 });
 
-// PAYMENT FAILED ENDPOINT
-app.post('/payment-failed', async (req, res) => {
-  try {
-    console.log('=== PAYMENT FAILED REQUEST ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
-    const { razorpay_order_id, error, userId } = req.body;
-    
-    // Validate inputs
-    if (!razorpay_order_id) {
-      return res.status(400).json({ success: false, error: 'Missing required parameter: razorpay_order_id' });
-    }
-    
-    // Update payment status to Rejected
-    if (dbPool) {
-      try {
-        console.log('Updating payment history with failed status in database...');
-        const request = dbPool.request();
-        request.input('status', sql.NVarChar, 'Rejected');
-        request.input('verified_at', sql.DateTime2, new Date());
-        request.input('id', sql.NVarChar, razorpay_order_id);
-        
-        const result = await request.query('UPDATE payment_history SET status = @status, verified_at = @verified_at WHERE id = @id');
-        console.log('Payment history updated with failed status. Rows affected:', result.rowsAffected);
-      } catch (dbError) {
-        console.error('Error updating payment status for failed payment:', dbError);
-      }
-    }
-    
-    const response = { success: true };
-    
-    console.log('=== PAYMENT FAILED RESPONSE ===');
-    console.log('SUCCESS:', response.success);
-    console.log('ORDER ID:', razorpay_order_id);
-    console.log('ERROR DETAILS:', JSON.stringify(error, null, 2));
-    console.log('==============================');
-    
-    res.json(response);
-    console.log('=== PAYMENT FAILED RESPONSE SENT ===');
-  } catch (error) {
-    console.error('Error handling failed payment:');
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to handle failed payment', 
-      details: error.message,
-      name: error.name
-    });
-  }
-});
+
 
 // Route to handle failed payments
 app.post('/payment-failed', async (req, res) => {
@@ -453,10 +408,10 @@ app.post('/payment-failed', async (req, res) => {
     }
     
     // Update payment history with rejected status
-    if (pool) {
+    if (dbPool) {
       try {
         console.log('Updating payment history with rejected status for failed payment in database...');
-        const request = pool.request();
+        const request = dbPool.request();
         request.input('status', sql.NVarChar, 'Rejected');
         request.input('verified_at', sql.DateTime2, new Date());
         request.input('id', sql.NVarChar, razorpay_order_id);
@@ -503,10 +458,10 @@ app.get('/user-payment-history/:userId', async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameter: userId' });
     }
     
-    if (pool) {
+    if (dbPool) {
       try {
         console.log('Fetching payment history from database...');
-        const request = pool.request();
+        const request = dbPool.request();
         request.input('user_id', sql.NVarChar, userId);
         
         const result = await request.query(`
@@ -551,10 +506,10 @@ app.get('/user-plan/:userId', async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameter: userId' });
     }
     
-    if (pool) {
+    if (dbPool) {
       try {
         console.log('Fetching user plan from database...');
-        const request = pool.request();
+        const request = dbPool.request();
         request.input('user_id', sql.NVarChar, userId);
         
         // For now, we'll return the user's most recent payment as their current plan
@@ -613,10 +568,10 @@ app.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Username and password are required' });
     }
     
-    if (pool) {
+    if (dbPool) {
       try {
         // Check if user already exists
-        const checkRequest = pool.request();
+        const checkRequest = dbPool.request();
         checkRequest.input('username', sql.NVarChar, username);
         const checkResult = await checkRequest.query(`
           SELECT COUNT(*) as count FROM users WHERE username = @username
@@ -627,7 +582,7 @@ app.post('/register', async (req, res) => {
         }
         
         // Create new user
-        const createUserRequest = pool.request();
+        const createUserRequest = dbPool.request();
         const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         createUserRequest.input('id', sql.NVarChar, userId);
         createUserRequest.input('username', sql.NVarChar, username);
@@ -675,10 +630,10 @@ app.post('/login', async (req, res) => {
     // For the specific user "abc", we'll use a fixed user ID
     const userId = 'user_abc_123';
     
-    if (pool) {
+    if (dbPool) {
       try {
         // Check if user exists
-        const checkRequest = pool.request();
+        const checkRequest = dbPool.request();
         checkRequest.input('user_id', sql.NVarChar, userId);
         const checkResult = await checkRequest.query(`
           SELECT id, username FROM users WHERE id = @user_id
@@ -686,7 +641,7 @@ app.post('/login', async (req, res) => {
         
         if (checkResult.recordset.length === 0) {
           // User doesn't exist, create the user
-          const createUserRequest = pool.request();
+          const createUserRequest = dbPool.request();
           createUserRequest.input('id', sql.NVarChar, userId);
           createUserRequest.input('username', sql.NVarChar, 'abc');
           createUserRequest.input('created_at', sql.DateTime2, new Date());
@@ -741,14 +696,14 @@ app.post('/login', async (req, res) => {
 // Test database connection endpoint
 app.get('/test-db', async (req, res) => {
   try {
-    if (!pool) {
+    if (!dbPool) {
       return res.status(500).json({ error: 'Database connection not available' });
     }
     
     console.log('Testing database connection...');
     
     // Test query to check if we can access the tables
-    const result = await pool.request().query('SELECT TOP 5 * FROM payment_history ORDER BY created_at DESC');
+    const result = await dbPool.request().query('SELECT TOP 5 * FROM payment_history ORDER BY created_at DESC');
     console.log('Database test query result:', result.recordset);
     
     res.json({ 
