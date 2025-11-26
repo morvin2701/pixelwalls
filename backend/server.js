@@ -18,7 +18,27 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Enable CORS for all origins
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow requests from localhost and your Vercel deployment
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://pixelwalls-wzsz.vercel.app',
+      'http://45.120.139.237:1433'  // Your server IP
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 
 // Middleware to parse JSON bodies
 app.use(express.json());
