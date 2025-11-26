@@ -36,7 +36,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
     {
       id: 'basic' as const,
       name: 'Basic Premium',
-      price: '₹299',
+      price: '₹300',
       description: 'Perfect for casual users',
       features: [
         { text: 'Access to premium wallpaper library', available: true },
@@ -53,7 +53,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
     {
       id: 'pro' as const,
       name: 'Pro Premium',
-      price: '₹599',
+      price: '₹1000',
       description: 'For professional creators',
       features: [
         { text: 'Full wallpaper generation capability', available: true },
