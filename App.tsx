@@ -577,11 +577,24 @@ const App: React.FC = () => {
       console.error('Error message:', error.message);
       console.error('Stack trace:', error.stack);
       
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        alert('Unable to connect to the payment server. Please make sure:\n\n1. The backend server is running\n2. You have internet connectivity\n3. Firewall is not blocking the connection\n\nTechnical details: ' + error.message);
+      let errorMessage = 'An unknown error occurred. Please try again.';
+      
+      if (error instanceof TypeError) {
+        if (error.message.includes('fetch')) {
+          errorMessage = 'Unable to connect to the payment server. Please make sure:\n\n1. The backend server is running\n2. You have internet connectivity\n3. Firewall is not blocking the connection\n4. The server address is correct\n\nTechnical details: ' + error.message;
+        } else if (error.message.includes('protocol')) {
+          errorMessage = 'Connection protocol error. This could be due to SSL/TLS issues or network configuration problems.\n\nPlease check:\n1. That you\'re using the correct protocol (http/https)\n2. That your network allows the connection\n3. That there are no proxy or firewall issues\n\nTechnical details: ' + error.message;
+        } else {
+          errorMessage = 'Network error: ' + error.message;
+        }
+      } else if (error.name === 'AbortError') {
+        errorMessage = 'Connection timeout - the server is not responding. Please check if the backend server is running.';
       } else {
-        alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
+        errorMessage = `Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`;
       }
+      
+      console.error('Displaying error to user:', errorMessage);
+      alert(errorMessage);
       
       // Refresh payment history to show the failed transaction
       const userId = localStorage.getItem('userId');

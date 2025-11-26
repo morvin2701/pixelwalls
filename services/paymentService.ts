@@ -71,11 +71,19 @@ export const paymentService = {
     
     try {
       console.log('Making request to backend URL:', backendUrl);
+      
+      // Add timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
       const response = await fetch(`${backendUrl}/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
+        body: JSON.stringify(params),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       console.log('Response status:', response.status);
       console.log('Response headers:', [...response.headers.entries()]);
@@ -111,6 +119,30 @@ export const paymentService = {
         console.error('2. Network connectivity issues');
         console.error('3. Firewall blocking the connection');
         console.error('4. CORS configuration issues');
+        console.error('5. SSL/TLS protocol issues');
+        console.error('6. DNS resolution problems');
+      }
+      
+      // Handle timeout specifically
+      if (error.name === 'AbortError') {
+        throw new Error('Connection timeout - the server is not responding. Please check if the backend server is running.');
+      }
+      
+      // Handle the "unknown or uninstrumented protocol" error specifically
+      if (error.message && error.message.includes('protocol')) {
+        console.error('Protocol error detected. This could be due to:');
+        console.error('- SSL/TLS certificate issues');
+        console.error('- Protocol mismatch between client and server');
+        console.error('- Network configuration problems');
+        console.error('- Proxy or firewall interference');
+        
+        // Try with http instead of https if we're using https
+        const currentUrl = getBackendUrl();
+        if (currentUrl.startsWith('https://')) {
+          const httpUrl = currentUrl.replace('https://', 'http://');
+          console.log('Trying with HTTP instead of HTTPS:', httpUrl);
+          // Note: We won't actually retry here, but we log the suggestion
+        }
       }
       
       throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);

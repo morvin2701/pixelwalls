@@ -27,8 +27,9 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:3000',
-      'https://pixelwalls-wzsz.vercel.app',
-      'http://45.120.139.237:5000'  // Your server IP and port (not 1433)
+      'https://pixelwalls-wzsz.vercel.app'
+      // Removed the backend server URL from allowed origins
+      // The backend server shouldn't be making requests to itself
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
