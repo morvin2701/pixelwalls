@@ -153,6 +153,39 @@ app.post('/create-order', async (req, res) => {
         console.log('Attempting to save payment history to database...');
         console.log('Database pool is available:', !!pool);
         
+        // First, check if user exists, if not create the user
+        let userExists = false;
+        try {
+          const userCheckRequest = pool.request();
+          userCheckRequest.input('user_id', sql.NVarChar, userId);
+          const userCheckResult = await userCheckRequest.query(`
+            SELECT COUNT(*) as count FROM users WHERE id = @user_id
+          `);
+          userExists = userCheckResult.recordset[0].count > 0;
+          console.log('User exists:', userExists);
+        } catch (userCheckError) {
+          console.error('Error checking if user exists:', userCheckError);
+        }
+        
+        // If user doesn't exist, create the user
+        if (!userExists) {
+          try {
+            console.log('Creating new user:', userId);
+            const createUserRequest = pool.request();
+            createUserRequest.input('id', sql.NVarChar, userId);
+            createUserRequest.input('username', sql.NVarChar, userId);
+            createUserRequest.input('created_at', sql.DateTime2, new Date());
+            await createUserRequest.query(`
+              INSERT INTO users (id, username, created_at)
+              VALUES (@id, @username, @created_at)
+            `);
+            console.log('User created successfully');
+          } catch (createUserError) {
+            console.error('Error creating user:', createUserError);
+          }
+        }
+        
+        // Now insert the payment history
         const request = pool.request();
         request.input('id', sql.NVarChar, order.id);
         request.input('user_id', sql.NVarChar, userId);
