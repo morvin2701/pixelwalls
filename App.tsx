@@ -358,6 +358,8 @@ const App: React.FC = () => {
              window.location.port === '5173';
     };
     
+    // For production, use the Render backend URL
+    // For development, use localhost:5000
     return isDevelopment() 
       ? 'http://localhost:5000' 
       : 'https://pixelwallsbackend.onrender.com';

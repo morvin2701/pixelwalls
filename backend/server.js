@@ -485,6 +485,71 @@ app.get('/user-payment-history/:userId', async (req, res) => {
   }
 });
 
+// Route to get user's current plan
+app.get('/user-plan/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log(`Fetching plan for user: ${userId}`);
+    
+    // Validate inputs
+    if (!userId) {
+      console.error('Missing required parameter: userId');
+      return res.status(400).json({ error: 'Missing required parameter: userId' });
+    }
+    
+    if (pool) {
+      try {
+        console.log('Fetching user plan from database...');
+        const request = pool.request();
+        request.input('user_id', sql.NVarChar, userId);
+        
+        // For now, we'll return the user's most recent payment as their current plan
+        // In a real implementation, you might have a separate user_plans table
+        const result = await request.query(`
+          SELECT TOP 1 * FROM payment_history 
+          WHERE user_id = @user_id AND status = 'Received'
+          ORDER BY created_at DESC
+        `);
+        
+        console.log('User plan fetched from database. Rows returned:', result.recordset.length);
+        
+        if (result.recordset.length > 0) {
+          const latestPayment = result.recordset[0];
+          res.json({
+            currentPlan: {
+              planId: latestPayment.plan_id,
+              planName: latestPayment.plan_name,
+              amount: latestPayment.amount,
+              currency: latestPayment.currency,
+              purchaseDate: latestPayment.created_at,
+              status: latestPayment.status
+            }
+          });
+        } else {
+          // No active plan found
+          res.json({ currentPlan: null });
+        }
+      } catch (dbError) {
+        console.error('Error fetching user plan from database:', dbError);
+        console.error('Database error details:', {
+          message: dbError.message,
+          code: dbError.code,
+          originalError: dbError.originalError
+        });
+        // Return null plan instead of error to prevent frontend crashes
+        res.json({ currentPlan: null });
+      }
+    } else {
+      console.log('Database pool is not available, returning null plan');
+      res.json({ currentPlan: null });
+    }
+  } catch (error) {
+    console.error('Error fetching user plan:', error);
+    // Return null plan instead of error to prevent frontend crashes
+    res.json({ currentPlan: null });
+  }
+});
+
 // Route to register a new user
 app.post('/register', async (req, res) => {
   try {
