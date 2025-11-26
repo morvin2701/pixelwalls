@@ -499,11 +499,15 @@ const App: React.FC = () => {
 
       // Force correct amounts for Razorpay
       let razorpayAmount = orderData.amount;
+      let planDescription = orderData.plan.description;
+      
       if (planId === 'pro') {
         razorpayAmount = 100000; // ₹1000
+        planDescription = 'Pro Premium - Unlock all premium features - monthly subscription (₹1000)';
         console.log('Forcing Razorpay amount to 100000 paise (₹1000) for Pro plan');
       } else if (planId === 'basic') {
         razorpayAmount = 30000; // ₹300
+        planDescription = 'Basic Premium - Unlock premium wallpapers - monthly subscription (₹300)';
         console.log('Forcing Razorpay amount to 30000 paise (₹300) for Basic plan');
       }
 
@@ -512,7 +516,7 @@ const App: React.FC = () => {
         amount: razorpayAmount,
         currency: orderData.currency,
         name: 'PixelWalls',
-        description: orderData.plan.description,
+        description: planDescription,
         order_id: orderData.orderId,
         prefill: {
           name: username,
