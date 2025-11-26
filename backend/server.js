@@ -150,6 +150,9 @@ app.post('/create-order', async (req, res) => {
     // Store order in payment history with user association
     if (pool) {
       try {
+        console.log('Attempting to save payment history to database...');
+        console.log('Database pool is available:', !!pool);
+        
         const request = pool.request();
         request.input('id', sql.NVarChar, order.id);
         request.input('user_id', sql.NVarChar, userId);
@@ -162,17 +165,36 @@ app.post('/create-order', async (req, res) => {
         request.input('created_at', sql.DateTime2, new Date());
         request.input('receipt', sql.NVarChar, receiptId);
         
-        await request.query(`
+        console.log('Executing database query with parameters:', {
+          id: order.id,
+          user_id: userId,
+          plan_id: plan.id,
+          plan_name: plan.name,
+          amount: correctedAmount,
+          currency: plan.currency,
+          status: 'Pending',
+          razorpay_order_id: order.id,
+          receipt: receiptId
+        });
+        
+        const result = await request.query(`
           INSERT INTO payment_history 
           (id, user_id, plan_id, plan_name, amount, currency, status, razorpay_order_id, created_at, receipt)
           VALUES 
           (@id, @user_id, @plan_id, @plan_name, @amount, @currency, @status, @razorpay_order_id, @created_at, @receipt)
         `);
         
-        console.log('Payment history saved to database');
+        console.log('Payment history saved to database. Rows affected:', result.rowsAffected);
       } catch (dbError) {
         console.error('Error saving payment history to database:', dbError);
+        console.error('Database error details:', {
+          message: dbError.message,
+          code: dbError.code,
+          originalError: dbError.originalError
+        });
       }
+    } else {
+      console.log('Database pool is not available, skipping database save');
     }
     
     const response = {
@@ -240,6 +262,7 @@ app.post('/verify-payment', async (req, res) => {
       // Update payment history with rejected status
       if (pool) {
         try {
+          console.log('Updating payment history with rejected status in database...');
           const request = pool.request();
           request.input('status', sql.NVarChar, 'Rejected');
           request.input('verified_at', sql.DateTime2, new Date());
@@ -247,16 +270,21 @@ app.post('/verify-payment', async (req, res) => {
           request.input('razorpay_signature', sql.NVarChar, razorpay_signature);
           request.input('id', sql.NVarChar, razorpay_order_id);
           
-          await request.query(`
+          const result = await request.query(`
             UPDATE payment_history 
             SET status = @status, verified_at = @verified_at, 
                 razorpay_payment_id = @razorpay_payment_id, razorpay_signature = @razorpay_signature
             WHERE id = @id
           `);
           
-          console.log('Payment history updated with rejected status');
+          console.log('Payment history updated with rejected status. Rows affected:', result.rowsAffected);
         } catch (dbError) {
           console.error('Error updating payment history in database:', dbError);
+          console.error('Database error details:', {
+            message: dbError.message,
+            code: dbError.code,
+            originalError: dbError.originalError
+          });
         }
       }
       
@@ -269,6 +297,7 @@ app.post('/verify-payment', async (req, res) => {
     // Update payment history with received status
     if (pool) {
       try {
+        console.log('Updating payment history with received status in database...');
         const request = pool.request();
         request.input('status', sql.NVarChar, 'Received');
         request.input('verified_at', sql.DateTime2, new Date());
@@ -276,16 +305,21 @@ app.post('/verify-payment', async (req, res) => {
         request.input('razorpay_signature', sql.NVarChar, razorpay_signature);
         request.input('id', sql.NVarChar, razorpay_order_id);
         
-        await request.query(`
+        const result = await request.query(`
           UPDATE payment_history 
           SET status = @status, verified_at = @verified_at, 
               razorpay_payment_id = @razorpay_payment_id, razorpay_signature = @razorpay_signature
           WHERE id = @id
         `);
         
-        console.log('Payment history updated with received status');
+        console.log('Payment history updated with received status. Rows affected:', result.rowsAffected);
       } catch (dbError) {
         console.error('Error updating payment history in database:', dbError);
+        console.error('Database error details:', {
+          message: dbError.message,
+          code: dbError.code,
+          originalError: dbError.originalError
+        });
       }
     }
     
@@ -325,20 +359,26 @@ app.post('/payment-failed', async (req, res) => {
     // Update payment history with rejected status
     if (pool) {
       try {
+        console.log('Updating payment history with rejected status for failed payment in database...');
         const request = pool.request();
         request.input('status', sql.NVarChar, 'Rejected');
         request.input('verified_at', sql.DateTime2, new Date());
         request.input('id', sql.NVarChar, razorpay_order_id);
         
-        await request.query(`
+        const result = await request.query(`
           UPDATE payment_history 
           SET status = @status, verified_at = @verified_at
           WHERE id = @id
         `);
         
-        console.log('Payment history updated with rejected status for failed payment');
+        console.log('Payment history updated with rejected status for failed payment. Rows affected:', result.rowsAffected);
       } catch (dbError) {
         console.error('Error updating payment history in database:', dbError);
+        console.error('Database error details:', {
+          message: dbError.message,
+          code: dbError.code,
+          originalError: dbError.originalError
+        });
       }
     }
     
@@ -362,6 +402,7 @@ app.get('/user-payment-history/:userId', async (req, res) => {
     
     if (pool) {
       try {
+        console.log('Fetching payment history from database...');
         const request = pool.request();
         request.input('user_id', sql.NVarChar, userId);
         
@@ -371,18 +412,51 @@ app.get('/user-payment-history/:userId', async (req, res) => {
           ORDER BY created_at DESC
         `);
         
-        console.log('Payment history fetched from database:', result.recordset);
+        console.log('Payment history fetched from database. Rows returned:', result.recordset.length);
+        console.log('Payment history data:', result.recordset);
         res.json(result.recordset);
       } catch (dbError) {
         console.error('Error fetching payment history from database:', dbError);
+        console.error('Database error details:', {
+          message: dbError.message,
+          code: dbError.code,
+          originalError: dbError.originalError
+        });
         res.status(500).json({ error: 'Failed to fetch payment history' });
       }
     } else {
+      console.log('Database pool is not available, returning empty array');
       res.json([]);
     }
   } catch (error) {
     console.error('Error fetching user payment history:', error);
     res.status(500).json({ error: 'Failed to fetch payment history' });
+  }
+});
+
+// Test database connection endpoint
+app.get('/test-db', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    console.log('Testing database connection...');
+    
+    // Test query to check if we can access the tables
+    const result = await pool.request().query('SELECT COUNT(*) as count FROM premium_plans');
+    console.log('Database test query result:', result.recordset);
+    
+    res.json({ 
+      status: 'Database connection successful',
+      premium_plans_count: result.recordset[0].count
+    });
+  } catch (error) {
+    console.error('Database test error:', error);
+    res.status(500).json({ 
+      error: 'Database test failed',
+      details: error.message
+    });
   }
 });
 
