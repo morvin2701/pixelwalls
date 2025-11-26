@@ -152,18 +152,31 @@ app.post('/create-order', async (req, res) => {
     
     console.log('Creating order for plan:', JSON.stringify(plan, null, 2));
     console.log('Plan ID requested:', planId);
-    console.log('Plan amount in paise:', plan.amount);
-    console.log('Plan amount in rupees:', plan.amount / 100);
+    console.log('Original plan amount in paise:', plan.amount);
+    console.log('Original plan amount in rupees:', plan.amount / 100);
     
-    // Force correct amounts for each plan
+    // Force correct amounts for each plan - SAFEGUARD
     let correctedAmount = plan.amount;
     if (planId === 'pro') {
       correctedAmount = 100000; // ₹1000
-      console.log('Correcting Pro plan amount to 100000 paise (₹1000)');
+      console.log('SAFEGUARD: Correcting Pro plan amount to 100000 paise (₹1000)');
     } else if (planId === 'basic') {
       correctedAmount = 30000; // ₹300
-      console.log('Correcting Basic plan amount to 30000 paise (₹300)');
+      console.log('SAFEGUARD: Correcting Basic plan amount to 30000 paise (₹300)');
     }
+    
+    // DOUBLE CHECK: Ensure the amount is correct
+    if (planId === 'pro' && correctedAmount !== 100000) {
+      console.error('CRITICAL ERROR: Pro plan amount is incorrect:', correctedAmount);
+      correctedAmount = 100000; // Force correct amount
+    }
+    if (planId === 'basic' && correctedAmount !== 30000) {
+      console.error('CRITICAL ERROR: Basic plan amount is incorrect:', correctedAmount);
+      correctedAmount = 30000; // Force correct amount
+    }
+    
+    console.log('FINAL CORRECTED AMOUNT IN PAISE:', correctedAmount);
+    console.log('FINAL CORRECTED AMOUNT IN RUPEES:', correctedAmount / 100);
     
     // Create Razorpay order
     // Fix: Shorten the receipt ID to be under 40 characters
