@@ -32,11 +32,20 @@ const loadRazorpayScript = (): Promise<boolean> => {
   });
 };
 
+// Determine if we're in development or production
+const isDevelopment = () => {
+  // Check if we're running on localhost
+  return window.location.hostname === 'localhost' || 
+         window.location.hostname === '127.0.0.1' ||
+         window.location.hostname.startsWith('localhost:') ||
+                  window.location.port === '3001';
+};
+
 export const paymentService = {
   // Create order by calling backend API
   createOrder: async (params: CreateOrderParams): Promise<OrderResponse> => {
     // For development
-    const backendUrl = typeof process !== 'undefined' && process.env.NODE_ENV === 'development' 
+    const backendUrl = isDevelopment() 
       ? 'http://localhost:5000' 
       : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
 
@@ -56,7 +65,7 @@ export const paymentService = {
   // Verify payment by calling backend API
   verifyPayment: async (params: VerifyPaymentParams): Promise<{ success: boolean }> => {
     // For development
-    const backendUrl = typeof process !== 'undefined' && process.env.NODE_ENV === 'development' 
+    const backendUrl = isDevelopment() 
       ? 'http://localhost:5000' 
       : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
 

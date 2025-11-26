@@ -296,8 +296,17 @@ const App: React.FC = () => {
       const orderData = await paymentService.createOrder({ planId });
       
       // Prepare Razorpay options
+      // Determine if we're in development or production
+      const isDevelopment = () => {
+        // Check if we're running on localhost
+        return window.location.hostname === 'localhost' || 
+               window.location.hostname === '127.0.0.1' ||
+               window.location.hostname.startsWith('localhost:') ||
+                              window.location.port === '3001';
+      };
+      
       // For development
-      const backendUrl = typeof process !== 'undefined' && process.env.NODE_ENV === 'development' 
+      const backendUrl = isDevelopment() 
         ? 'http://localhost:5000' 
         : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
 
