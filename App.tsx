@@ -9,6 +9,7 @@ import { GeneratorControls } from './components/GeneratorControls';
 import { ImageGrid } from './components/ImageGrid';
 import { ImageModal } from './components/ImageModal';
 import { ApiKeyDialog } from './components/ApiKeyDialog';
+import { ApiKeyInputDialog } from './components/ApiKeyInputDialog';
 import { PremiumModal } from './components/PremiumModal';
 import { LoginPage } from './components/LoginPage';
 import { PaymentHistory } from './components/PaymentHistory';
@@ -202,6 +203,7 @@ const App: React.FC = () => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+  const [showApiKeyInputDialog, setShowApiKeyInputDialog] = useState(false);
   
   const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue, requestApiKey } = useApiKey(geminiApiKey);
   
@@ -221,7 +223,25 @@ const App: React.FC = () => {
       setError('Failed to load payment history. Please try again.');
     }
   };
-
+  
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('geminiApiKey');
+    if (savedApiKey) {
+      setGeminiApiKey(savedApiKey);
+    }
+  }, []);
+  
+  const handleApiKeyInputConfirm = (apiKey: string) => {
+    setGeminiApiKey(apiKey);
+    localStorage.setItem('geminiApiKey', apiKey);
+    setShowApiKeyInputDialog(false);
+  };
+  
+  const handleApiKeyInputCancel = () => {
+    setShowApiKeyInputDialog(false);
+  };
+  
   const handleLogin = (username: string, password: string) => {
     // Validate credentials
     console.log('Login attempt:', { username, password });
@@ -251,8 +271,8 @@ const App: React.FC = () => {
     // 1. Validate API Key existence before attempting anything
     const hasKey = await validateApiKey();
     if (!hasKey) {
-      // If no API key, show the dialog to request one
-      requestApiKey();
+      // If no API key, show our custom input dialog
+      setShowApiKeyInputDialog(true);
       return;
     }
 
@@ -291,7 +311,7 @@ const App: React.FC = () => {
         errorMessage.toLowerCase().includes('permission denied')
       ) {
          // Re-trigger dialog if the key was rejected by the backend
-         requestApiKey();
+         setShowApiKeyInputDialog(true);
          // Stop here, do not show the generic error toast
          return; 
       }
@@ -386,7 +406,17 @@ const App: React.FC = () => {
               <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />
             )}
           </AnimatePresence>
-
+          
+          {/* Custom API Key Input Dialog */}
+          <AnimatePresence>
+            {showApiKeyInputDialog && (
+              <ApiKeyInputDialog 
+                onConfirm={handleApiKeyInputConfirm}
+                onCancel={handleApiKeyInputCancel}
+              />
+            )}
+          </AnimatePresence>
+          
           {/* Premium Modal */}
           <AnimatePresence>
             {showPremiumModal && (
@@ -395,6 +425,22 @@ const App: React.FC = () => {
                 onClose={() => setShowPremiumModal(false)}
                 onPurchase={handlePurchase}
               />
+            )}
+          </AnimatePresence>
+          
+          {/* Payment History Modal */}
+          <AnimatePresence>
+            {activeTab === 'paymentHistory' && (
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="bg-zinc-900 border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                >
+                  <PaymentHistory payments={paymentHistory} />
+                </motion.div>
+              </div>
             )}
           </AnimatePresence>
 
@@ -550,16 +596,12 @@ const App: React.FC = () => {
 
             {/* Grid Area */}
             <div className="flex-1 w-full overflow-y-auto overflow-x-hidden custom-scrollbar p-4 md:p-8 pt-0 pb-[100px] md:pb-0">
-              {activeTab === 'paymentHistory' ? (
-                <PaymentHistory payments={paymentHistory} />
-              ) : (
-                <ImageGrid 
-                  wallpapers={displayedWallpapers} 
-                  onSelect={setSelectedWallpaper} 
-                  onToggleFavorite={toggleFavorite}
-                  isGenerating={isGenerating}
-                />
-              )}
+              <ImageGrid 
+                wallpapers={displayedWallpapers} 
+                onSelect={setSelectedWallpaper} 
+                onToggleFavorite={toggleFavorite}
+                isGenerating={isGenerating}
+              />
             </div>
           </main>
 

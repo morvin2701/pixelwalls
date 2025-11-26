@@ -49,11 +49,7 @@ export const useApiKey = (storedApiKey?: string | null) => {
   }, [storedApiKey]);
 
   const handleApiKeyDialogContinue = useCallback(async () => {
-    setShowApiKeyDialog(false);
-    const aistudio = (window as any).aistudio as AIStudio | undefined;
-    if (aistudio) {
-      await aistudio.openSelectKey();
-    }
+    // Don't do anything here since we're using our own input dialog
   }, []);
 
   // New function to manually show the API key dialog
