@@ -416,13 +416,15 @@ app.get('/user-payment-history/:userId', (req, res) => {
     // Filter payment history for this user
     const userPaymentHistory = paymentHistory.filter(record => record.userId === userId);
     
-    res.json(userPaymentHistory);
+    // Ensure we always return an array, even if empty
+    const result = Array.isArray(userPaymentHistory) ? userPaymentHistory : [];
+    
+    console.log(`Found ${result.length} payment records for user ${userId}`);
+    res.json(result);
   } catch (error) {
     console.error('Error fetching user payment history:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch user payment history', 
-      details: error.message 
-    });
+    // Always return an empty array in case of error to prevent frontend issues
+    res.status(200).json([]);
   }
 });
 
@@ -431,13 +433,13 @@ app.get('/payment-history', (req, res) => {
   try {
     console.log('Received payment history request');
     console.log('Current payment history:', JSON.stringify(paymentHistory, null, 2));
-    res.json(paymentHistory);
+    // Ensure we always return an array
+    const result = Array.isArray(paymentHistory) ? paymentHistory : [];
+    res.json(result);
   } catch (error) {
     console.error('Error fetching payment history:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch payment history', 
-      details: error.message 
-    });
+    // Always return an empty array in case of error
+    res.status(200).json([]);
   }
 });
 

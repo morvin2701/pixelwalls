@@ -255,7 +255,14 @@ const App: React.FC = () => {
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch user plan: ${response.status}`);
+        console.error(`Failed to fetch user plan: ${response.status}`);
+        // Fall back to localStorage plan
+        const savedPlan = localStorage.getItem('currentUserPlan');
+        if (savedPlan && (savedPlan === 'basic' || savedPlan === 'pro')) {
+          setCurrentUserPlan(savedPlan);
+          setIsPremium(true);
+        }
+        return;
       }
       
       const data = await response.json();
@@ -295,16 +302,40 @@ const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
       });
       
+      // Even if response is not ok, we'll handle it gracefully
       if (!response.ok) {
-        throw new Error(`Failed to fetch user payment history: ${response.status}`);
+        console.error(`Failed to fetch user payment history: ${response.status}`);
+        setPaymentHistory([]);
+        return;
       }
       
       const data = await response.json();
       console.log('User payment history:', data);
-      setPaymentHistory(data);
+      
+      // Ensure data is an array
+      if (!Array.isArray(data)) {
+        console.warn('Payment history data is not an array:', data);
+        setPaymentHistory([]);
+        return;
+      }
+      
+      // Transform the data to match what the PaymentHistory component expects
+      const transformedData = data.map((payment: any) => ({
+        id: payment.id || payment.razorpay_payment_id || `payment-${Date.now()}`,
+        planName: payment.planName || payment.planId || 'Unknown Plan',
+        amount: payment.amount || 0,
+        currency: payment.currency || 'INR',
+        status: payment.status || 'Pending',
+        date: payment.verifiedAt || payment.createdAt || new Date().toISOString(),
+        transactionId: payment.razorpay_payment_id || payment.id
+      }));
+      
+      setPaymentHistory(transformedData);
     } catch (error) {
       console.error('Failed to fetch user payment history:', error);
       setError('Failed to load payment history. Please try again.');
+      // Set empty array to avoid undefined errors
+      setPaymentHistory([]);
     }
   };
   
