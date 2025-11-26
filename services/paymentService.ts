@@ -38,7 +38,9 @@ const isDevelopment = () => {
   return window.location.hostname === 'localhost' || 
          window.location.hostname === '127.0.0.1' ||
          window.location.hostname.startsWith('localhost:') ||
-                  window.location.port === '3001';
+         window.location.port === '3001' ||
+         window.location.port === '3000' ||
+         window.location.port === '5173';
 };
 
 export const paymentService = {
@@ -49,17 +51,32 @@ export const paymentService = {
       ? 'http://localhost:5000' 
       : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
 
-    const response = await fetch(`${backendUrl}/create-order`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params)
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to create order');
+    console.log('Making request to backend URL:', backendUrl);
+    console.log('Request params:', params);
+
+    try {
+      const response = await fetch(`${backendUrl}/create-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', [...response.headers.entries()]);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to create order. Status:', response.status, 'Error:', errorText);
+        throw new Error(`Failed to create order: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Order creation response:', data);
+      return data;
+    } catch (error) {
+      console.error('Network error during order creation:', error);
+      throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    return response.json();
   },
   
   // Verify payment by calling backend API
@@ -69,21 +86,38 @@ export const paymentService = {
       ? 'http://localhost:5000' 
       : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
 
-    const response = await fetch(`${backendUrl}/verify-payment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params)
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to verify payment');
+    console.log('Verifying payment with backend URL:', backendUrl);
+    console.log('Verification params:', params);
+
+    try {
+      const response = await fetch(`${backendUrl}/verify-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
+      });
+      
+      console.log('Verification response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to verify payment. Status:', response.status, 'Error:', errorText);
+        throw new Error(`Failed to verify payment: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Verification response:', data);
+      return data;
+    } catch (error) {
+      console.error('Network error during payment verification:', error);
+      throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    return response.json();
   },
   
   // Initialize Razorpay checkout
   initiatePayment: async (options: any, backendUrl: string): Promise<boolean> => {
+    console.log('Initializing payment with options:', options);
+    console.log('Backend URL for verification:', backendUrl);
+    
     // Load Razorpay script
     const isScriptLoaded = await loadRazorpayScript();
     if (!isScriptLoaded) {
@@ -95,6 +129,8 @@ export const paymentService = {
         ...options,
         handler: async function (response: any) {
           try {
+            console.log('Payment response received:', response);
+            
             // Send payment details to backend for verification
             const verificationResponse = await fetch(`${backendUrl}/verify-payment`, {
               method: 'POST',
@@ -107,6 +143,7 @@ export const paymentService = {
             });
             
             const verificationResult = await verificationResponse.json();
+            console.log('Verification result:', verificationResult);
             
             if (verificationResult.success) {
               resolve(true);

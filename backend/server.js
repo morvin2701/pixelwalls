@@ -13,7 +13,26 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow requests from localhost and your Vercel deployment
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://pixelwalls-wzsz.vercel.app'
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // Initialize Razorpay instance
@@ -43,13 +62,17 @@ const premiumPlans = {
 // Route to create order
 app.post('/create-order', async (req, res) => {
   try {
+    console.log('Received create-order request:', req.body);
     const { planId } = req.body;
     
     // Validate plan
     const plan = premiumPlans[planId];
     if (!plan) {
+      console.error('Invalid plan selected:', planId);
       return res.status(400).json({ error: 'Invalid plan selected' });
     }
+    
+    console.log('Creating order for plan:', plan);
     
     // Create Razorpay order
     const options = {
@@ -59,6 +82,7 @@ app.post('/create-order', async (req, res) => {
     };
     
     const order = await razorpay.orders.create(options);
+    console.log('Order created successfully:', order);
     
     res.json({
       orderId: order.id,
@@ -68,13 +92,14 @@ app.post('/create-order', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating order:', error);
-    res.status(500).json({ error: 'Failed to create order' });
+    res.status(500).json({ error: 'Failed to create order', details: error.message });
   }
 });
 
 // Route to verify payment
 app.post('/verify-payment', async (req, res) => {
   try {
+    console.log('Received verify-payment request:', req.body);
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     
     // Verify payment signature
@@ -82,11 +107,19 @@ app.post('/verify-payment', async (req, res) => {
     shasum.update(`${razorpay_order_id}|${razorpay_payment_id}`);
     const digest = shasum.digest('hex');
     
+    console.log('Signature verification:', {
+      received: razorpay_signature,
+      calculated: digest,
+      match: digest === razorpay_signature
+    });
+    
     if (digest !== razorpay_signature) {
+      console.error('Invalid signature');
       return res.status(400).json({ success: false, error: 'Invalid signature' });
     }
     
     // Signature is valid
+    console.log('Payment verification successful');
     res.json({
       success: true,
       orderId: razorpay_order_id,
@@ -95,7 +128,7 @@ app.post('/verify-payment', async (req, res) => {
     });
   } catch (error) {
     console.error('Error verifying payment:', error);
-    res.status(500).json({ success: false, error: 'Failed to verify payment' });
+    res.status(500).json({ success: false, error: 'Failed to verify payment', details: error.message });
   }
 });
 
