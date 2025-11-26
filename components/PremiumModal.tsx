@@ -127,12 +127,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
                   </div>
                 )}
                 
-                {/* Current Plan Badge */}
-                {plan.id === currentUserPlan && (
-                  <div className="absolute top-4 right-4 bg-green-500/20 text-green-400 text-xs font-bold px-2 py-1 rounded-full">
-                    CURRENT PLAN
-                  </div>
-                )}
+              
                 
                 <div className="flex justify-between items-start mb-4">
                   <div>
