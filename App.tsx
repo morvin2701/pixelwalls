@@ -355,7 +355,8 @@ const App: React.FC = () => {
              window.location.hostname === '127.0.0.1' ||
              window.location.hostname.startsWith('localhost:') ||
              window.location.port.startsWith('300') ||  // This will match 3000, 3001, 3002, etc.
-             window.location.port === '5173';
+             window.location.port === '5173' ||
+             window.location.port === '3000';  // Add port 3000 as development port
     };
     
     // For production, use your Render backend URL
