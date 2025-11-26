@@ -362,7 +362,7 @@ const App: React.FC = () => {
     // For development, use localhost:5000
     return isDevelopment() 
       ? 'http://localhost:5000' 
-      : 'http://45.120.139.237:1433';  // Use your server's IP and port
+      : 'http://45.120.139.237:5000';  // Use your server's IP and port 5000 (not 1433)
   };
   
   const handleApiKeyInputConfirm = (apiKey: string) => {
