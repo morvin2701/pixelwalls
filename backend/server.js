@@ -29,9 +29,8 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:3000',
-      'https://pixelwalls-wzsz.vercel.app'
-      // Removed the backend server URL from allowed origins
-      // The backend server shouldn't be making requests to itself
+      'https://pixelwalls-wzsz.vercel.app',
+      'https://pixelwallsbackend.onrender.com'  // Your Render backend URL
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
