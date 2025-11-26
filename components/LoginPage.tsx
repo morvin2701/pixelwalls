@@ -130,7 +130,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         
         {/* Demo Credentials */}
         <div className="mt-6 text-center text-xs text-zinc-500">
-          <p>Demo credentials: Username: <span className="font-mono bg-zinc-800 px-1.5 py-0.5 rounded">abc</span> Password: <span className="font-mono bg-zinc-800 px-1.5 py-0.5 rounded">123</span></p>
+          <p>Enter username: <span className="font-mono bg-zinc-800 px-1.5 py-0.5 rounded">abc</span> (case insensitive) and password: <span className="font-mono bg-zinc-800 px-1.5 py-0.5 rounded">123</span></p>
           <p className="mt-2">By signing in, you agree to our Terms of Service and Privacy Policy.</p>
         </div>
       </motion.div>
