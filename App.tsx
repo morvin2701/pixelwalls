@@ -234,17 +234,23 @@ const App: React.FC = () => {
   
   // Fetch user's plan from backend when authenticated
   useEffect(() => {
-    if (isAuthenticated && username) {
-      fetchUserPlan(username);
+    if (isAuthenticated) {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        fetchUserPlan(userId);
+      }
     }
-  }, [isAuthenticated, username]);
-  
+  }, [isAuthenticated]);
+
   // Fetch payment history when payment history tab is active or when showPaymentHistory changes
   useEffect(() => {
-    if ((activeTab === 'paymentHistory' || showPaymentHistory) && username) {
-      fetchUserPaymentHistory(username);
+    if ((activeTab === 'paymentHistory' || showPaymentHistory) && isAuthenticated) {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        fetchUserPaymentHistory(userId);
+      }
     }
-  }, [activeTab, showPaymentHistory, username]);
+  }, [activeTab, showPaymentHistory, isAuthenticated]);
   
   const fetchUserPlan = async (userId: string) => {
     try {
@@ -368,19 +374,40 @@ const App: React.FC = () => {
   };
   
   const handleLogin = async (username: string, password: string) => {
-    // Validate credentials
+    // Validate credentials by calling backend
     console.log('Login attempt:', { username, password });
     
-    // Check if username is 'abc' (case insensitive) and password is '123'
-    if (username.toLowerCase() === 'abc' && password === '123') {
-      setIsAuthenticated(true);
-      setUsername(username); // Set username
-      // Save username to localStorage
-      localStorage.setItem('username', username);
-      // Don't set API key here - it will be set when needed
-    } else {
-      // In a real app, you would show an error message
-      alert('Invalid credentials. Please use username "abc" and password "123".');
+    try {
+      const backendUrl = getBackendUrl();
+      console.log('Backend URL:', backendUrl);
+      
+      const response = await fetch(`${backendUrl}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      
+      console.log('Login response status:', response.status);
+      console.log('Login response headers:', [...response.headers.entries()]);
+      
+      const data = await response.json();
+      console.log('Login response data:', data);
+      
+      if (data.success) {
+        setIsAuthenticated(true);
+        setUsername(data.username); // Set username from backend response
+        // Save username to localStorage
+        localStorage.setItem('username', data.username);
+        // Save userId to localStorage for payment processing
+        localStorage.setItem('userId', data.userId);
+        // Don't set API key here - it will be set when needed
+        console.log('Login successful:', data);
+      } else {
+        alert(`Login failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Login failed. Please try again.');
     }
   };
 
@@ -487,9 +514,16 @@ const App: React.FC = () => {
     }
 
     try {
-      console.log('Creating order for user:', username);
-      // Create order through backend, passing the username
-      const orderData = await paymentService.createOrder({ planId, userId: username });
+      // Get userId from localStorage
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        alert('User not properly authenticated. Please log in again.');
+        return;
+      }
+      
+      console.log('Creating order for user:', userId);
+      // Create order through backend, passing the userId
+      const orderData = await paymentService.createOrder({ planId, userId: userId });
       
       console.log('Order data received from backend:', orderData);
       
@@ -510,7 +544,7 @@ const App: React.FC = () => {
         },
         notes: {
           plan_id: planId,
-          user_id: username,
+          user_id: userId,
           plan_name: planId === 'pro' ? 'Pro Premium' : 'Basic Premium',
           amount_inr: planId === 'pro' ? '1000' : '300'
         },
@@ -534,19 +568,22 @@ const App: React.FC = () => {
         // Save to localStorage for persistence across page refreshes
         localStorage.setItem('currentUserPlan', planId);
         // Refresh user's plan and payment history to show the new transaction
-        fetchUserPlan(username);
-        fetchUserPaymentHistory(username);
+        fetchUserPlan(userId);
+        fetchUserPaymentHistory(userId);
         alert(`Thank you for purchasing the ${orderData.plan.name} plan! Enjoy your premium features.`);
       } else {
         alert('Payment was not successful. Please try again.');
         // Refresh payment history to show the failed transaction
-        fetchUserPaymentHistory(username);
+        fetchUserPaymentHistory(userId);
       }
     } catch (error) {
       console.error('Payment failed:', error);
       alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
       // Refresh payment history to show the failed transaction
-      fetchUserPaymentHistory(username);
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        fetchUserPaymentHistory(userId);
+      }
     }
   };
 

@@ -528,34 +528,28 @@ app.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password are required' });
     }
     
-    // For testing purposes, we'll accept any username/password combination
-    // In a real application, you would verify the password against a hashed version
+    // Check if credentials match the specific requirement
+    if (username.toLowerCase() !== 'abc' || password !== '123') {
+      return res.status(401).json({ error: 'Invalid credentials. Please use username "abc" and password "123".' });
+    }
+    
+    // For the specific user "abc", we'll use a fixed user ID
+    const userId = 'user_abc_123';
     
     if (pool) {
       try {
         // Check if user exists
         const checkRequest = pool.request();
-        checkRequest.input('username', sql.NVarChar, username);
+        checkRequest.input('user_id', sql.NVarChar, userId);
         const checkResult = await checkRequest.query(`
-          SELECT id, username FROM users WHERE username = @username
+          SELECT id, username FROM users WHERE id = @user_id
         `);
         
-        if (checkResult.recordset.length > 0) {
-          // User exists, return user data
-          const user = checkResult.recordset[0];
-          console.log('User logged in:', username);
-          res.json({ 
-            success: true, 
-            userId: user.id,
-            username: user.username,
-            message: 'Login successful'
-          });
-        } else {
-          // User doesn't exist, create the user (for testing purposes)
+        if (checkResult.recordset.length === 0) {
+          // User doesn't exist, create the user
           const createUserRequest = pool.request();
-          const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           createUserRequest.input('id', sql.NVarChar, userId);
-          createUserRequest.input('username', sql.NVarChar, username);
+          createUserRequest.input('username', sql.NVarChar, 'abc');
           createUserRequest.input('created_at', sql.DateTime2, new Date());
           
           await createUserRequest.query(`
@@ -563,20 +557,29 @@ app.post('/login', async (req, res) => {
             VALUES (@id, @username, @created_at)
           `);
           
-          console.log('New user created and logged in:', username);
-          res.json({ 
-            success: true, 
-            userId: userId,
-            username: username,
-            message: 'User created and logged in successfully'
-          });
+          console.log('User "abc" created in database');
         }
+        
+        console.log('User "abc" logged in successfully');
+        res.json({ 
+          success: true, 
+          userId: userId,
+          username: 'abc',
+          message: 'Login successful'
+        });
       } catch (dbError) {
         console.error('Database error during login:', dbError);
         res.status(500).json({ error: 'Failed to login' });
       }
     } else {
-      res.status(500).json({ error: 'Database connection not available' });
+      // Fallback if database is not available
+      console.log('Database not available, using fallback login');
+      res.json({ 
+        success: true, 
+        userId: userId,
+        username: 'abc',
+        message: 'Login successful'
+      });
     }
   } catch (error) {
     console.error('Error during login:', error);
