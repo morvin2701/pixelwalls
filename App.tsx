@@ -330,6 +330,7 @@ const App: React.FC = () => {
         transactionId: payment.razorpay_payment_id || payment.id
       }));
       
+      console.log('Transformed payment history:', transformedData);
       setPaymentHistory(transformedData);
     } catch (error) {
       console.error('Failed to fetch user payment history:', error);

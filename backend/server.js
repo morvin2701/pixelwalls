@@ -213,6 +213,11 @@ app.post('/create-order', async (req, res) => {
       createdAt: new Date().toISOString()
     };
     
+    // Add userId to error record if available
+    if (req.body && req.body.userId) {
+      errorRecord.userId = req.body.userId;
+    }
+    
     paymentHistory.push(errorRecord);
     savePaymentHistory(); // Save to file
     
@@ -252,6 +257,10 @@ app.post('/verify-payment', async (req, res) => {
         paymentRecord.verifiedAt = new Date().toISOString();
         paymentRecord.razorpay_payment_id = razorpay_payment_id;
         paymentRecord.razorpay_signature = razorpay_signature;
+        // Ensure userId is set if not already present
+        if (!paymentRecord.userId && userId) {
+          paymentRecord.userId = userId;
+        }
         savePaymentHistory(); // Save to file
       } else {
         // If we can't find the record, create a new one for failed payments
@@ -281,6 +290,10 @@ app.post('/verify-payment', async (req, res) => {
       paymentRecord.verifiedAt = new Date().toISOString();
       paymentRecord.razorpay_payment_id = razorpay_payment_id;
       paymentRecord.razorpay_signature = razorpay_signature;
+      // Ensure userId is set if not already present
+      if (!paymentRecord.userId && userId) {
+        paymentRecord.userId = userId;
+      }
       // Update user's plan in the users database
       if (userId && paymentRecord.planId) {
         console.log(`Updating user ${userId} with plan ${paymentRecord.planId}`);
@@ -351,6 +364,10 @@ app.post('/payment-failed', (req, res) => {
       paymentRecord.status = 'Rejected';
       paymentRecord.verifiedAt = new Date().toISOString();
       paymentRecord.error = error;
+      // Ensure userId is set if not already present
+      if (!paymentRecord.userId && userId) {
+        paymentRecord.userId = userId;
+      }
       savePaymentHistory(); // Save to file
     } else {
       // If we can't find the record, create a new one for failed payments
