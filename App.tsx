@@ -209,12 +209,28 @@ const App: React.FC = () => {
   
   const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue, requestApiKey } = useApiKey(geminiApiKey);
   
-  // Fetch payment history when payment history tab is active
+  // Load user plan and payment history from localStorage on mount
   useEffect(() => {
-    if (activeTab === 'paymentHistory') {
+    // Load current user plan from localStorage
+    const savedPlan = localStorage.getItem('currentUserPlan');
+    if (savedPlan && (savedPlan === 'base' || savedPlan === 'basic' || savedPlan === 'pro')) {
+      setCurrentUserPlan(savedPlan);
+      setIsPremium(savedPlan !== 'base');
+    }
+    
+    // Load API key from localStorage on mount
+    const savedApiKey = localStorage.getItem('geminiApiKey');
+    if (savedApiKey) {
+      setGeminiApiKey(savedApiKey);
+    }
+  }, []);
+  
+  // Fetch payment history when payment history tab is active or when showPaymentHistory changes
+  useEffect(() => {
+    if (activeTab === 'paymentHistory' || showPaymentHistory) {
       fetchPaymentHistory();
     }
-  }, [activeTab]);
+  }, [activeTab, showPaymentHistory]);
   
   const fetchPaymentHistory = async () => {
     try {
@@ -225,14 +241,6 @@ const App: React.FC = () => {
       setError('Failed to load payment history. Please try again.');
     }
   };
-  
-  // Load API key from localStorage on mount
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem('geminiApiKey');
-    if (savedApiKey) {
-      setGeminiApiKey(savedApiKey);
-    }
-  }, []);
   
   const handleApiKeyInputConfirm = (apiKey: string) => {
     setGeminiApiKey(apiKey);
@@ -345,6 +353,9 @@ const App: React.FC = () => {
       // For the free plan, we just close the modal and show a message
       setShowPremiumModal(false);
       setCurrentUserPlan('base');
+      setIsPremium(false);
+      // Save to localStorage
+      localStorage.setItem('currentUserPlan', 'base');
       alert('You are currently using the Base Version. Upgrade to a premium plan to unlock more features!');
       return;
     }
@@ -398,13 +409,21 @@ const App: React.FC = () => {
         setShowPremiumModal(false);
         // Set the current user plan based on what they purchased
         setCurrentUserPlan(planId as 'basic' | 'pro');
+        // Save to localStorage for persistence across page refreshes
+        localStorage.setItem('currentUserPlan', planId);
+        // Refresh payment history to show the new transaction
+        fetchPaymentHistory();
         alert(`Thank you for purchasing the ${orderData.plan.name} plan! Enjoy your premium features.`);
       } else {
         alert('Payment was not successful. Please try again.');
+        // Refresh payment history to show the failed transaction
+        fetchPaymentHistory();
       }
     } catch (error) {
       console.error('Payment failed:', error);
       alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
+      // Refresh payment history to show the failed transaction
+      fetchPaymentHistory();
     }
   };
 

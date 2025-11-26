@@ -168,6 +168,21 @@ app.post('/create-order', async (req, res) => {
     // Log the full error object
     console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     
+    // Even if order creation fails, we should log this attempt in payment history
+    const errorRecord = {
+      id: `error_${Date.now()}`,
+      status: 'Error',
+      error: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      },
+      createdAt: new Date().toISOString()
+    };
+    
+    paymentHistory.push(errorRecord);
+    savePaymentHistory(); // Save to file
+    
     res.status(500).json({ 
       error: 'Failed to create order', 
       details: error.message,
@@ -205,6 +220,18 @@ app.post('/verify-payment', async (req, res) => {
         paymentRecord.razorpay_payment_id = razorpay_payment_id;
         paymentRecord.razorpay_signature = razorpay_signature;
         savePaymentHistory(); // Save to file
+      } else {
+        // If we can't find the record, create a new one for failed payments
+        const newRecord = {
+          id: razorpay_order_id,
+          status: 'Rejected',
+          verifiedAt: new Date().toISOString(),
+          razorpay_payment_id: razorpay_payment_id,
+          razorpay_signature: razorpay_signature,
+          createdAt: new Date().toISOString()
+        };
+        paymentHistory.push(newRecord);
+        savePaymentHistory(); // Save to file
       }
       
       return res.status(400).json({ success: false, error: 'Invalid signature' });
@@ -220,6 +247,18 @@ app.post('/verify-payment', async (req, res) => {
       paymentRecord.verifiedAt = new Date().toISOString();
       paymentRecord.razorpay_payment_id = razorpay_payment_id;
       paymentRecord.razorpay_signature = razorpay_signature;
+      savePaymentHistory(); // Save to file
+    } else {
+      // If we can't find the record, create a new one for successful payments
+      const newRecord = {
+        id: razorpay_order_id,
+        status: 'Received',
+        verifiedAt: new Date().toISOString(),
+        razorpay_payment_id: razorpay_payment_id,
+        razorpay_signature: razorpay_signature,
+        createdAt: new Date().toISOString()
+      };
+      paymentHistory.push(newRecord);
       savePaymentHistory(); // Save to file
     }
     
@@ -262,6 +301,17 @@ app.post('/payment-failed', (req, res) => {
       paymentRecord.status = 'Rejected';
       paymentRecord.verifiedAt = new Date().toISOString();
       paymentRecord.error = error;
+      savePaymentHistory(); // Save to file
+    } else {
+      // If we can't find the record, create a new one for failed payments
+      const newRecord = {
+        id: razorpay_order_id,
+        status: 'Rejected',
+        verifiedAt: new Date().toISOString(),
+        error: error,
+        createdAt: new Date().toISOString()
+      };
+      paymentHistory.push(newRecord);
       savePaymentHistory(); // Save to file
     }
     
