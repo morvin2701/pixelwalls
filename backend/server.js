@@ -357,6 +357,45 @@ app.post('/verify-payment', async (req, res) => {
   }
 });
 
+// PAYMENT FAILED ENDPOINT
+app.post('/payment-failed', async (req, res) => {
+  try {
+    console.log('=== PAYMENT FAILED REQUEST ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    const { razorpay_order_id, error, userId } = req.body;
+    
+    // Validate inputs
+    if (!razorpay_order_id) {
+      return res.status(400).json({ success: false, error: 'Missing required parameter: razorpay_order_id' });
+    }
+    
+    // Update payment status to Rejected
+    if (dbPool) {
+      try {
+        await dbPool.request()
+          .input('status', sql.NVarChar, 'Rejected')
+          .input('verified_at', sql.DateTime2, new Date())
+          .input('id', sql.NVarChar, razorpay_order_id)
+          .query('UPDATE payment_history SET status = @status, verified_at = @verified_at WHERE id = @id');
+        console.log('Payment status updated to Rejected due to failure');
+      } catch (dbError) {
+        console.error('Error updating payment status for failed payment:', dbError);
+      }
+    }
+    
+    res.json({ success: true });
+    console.log('=== PAYMENT FAILED RESPONSE SENT ===');
+  } catch (error) {
+    console.error('Error handling failed payment:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to handle failed payment', 
+      details: error.message 
+    });
+  }
+});
+
 // GET USER PAYMENT HISTORY
 app.get('/user-payment-history/:userId', async (req, res) => {
   try {

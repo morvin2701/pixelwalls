@@ -533,6 +533,13 @@ const App: React.FC = () => {
         },
         theme: {
           color: '#6366f1'
+        },
+        modal: {
+          ondismiss: function() {
+            console.log('Payment dialog closed by user');
+            // Refresh payment history even if user closes the dialog
+            fetchUserPaymentHistory(userId);
+          }
         }
       };
       
