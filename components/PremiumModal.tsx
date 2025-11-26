@@ -6,10 +6,11 @@ interface PremiumModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPurchase: (planId: string) => void;
+  currentUserPlan: 'base' | 'basic' | 'pro'; // Add current user plan prop
 }
 
-export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onPurchase }) => {
-  const [selectedPlan, setSelectedPlan] = useState<'basic' | 'pro' | 'base'>('base');
+export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onPurchase, currentUserPlan }) => {
+  const [selectedPlan, setSelectedPlan] = useState<'basic' | 'pro' | 'base'>(currentUserPlan);
 
   if (!isOpen) return null;
 
@@ -118,6 +119,13 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
                   </div>
                 )}
                 
+                {/* Current Plan Badge */}
+                {plan.id === currentUserPlan && (
+                  <div className="absolute top-4 right-4 bg-green-500/20 text-green-400 text-xs font-bold px-2 py-1 rounded-full">
+                    CURRENT PLAN
+                  </div>
+                )}
+                
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -149,10 +157,17 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
                   ))}
                 </ul>
                 
-                {plan.free ? (
-                  <div className="w-full py-3 rounded-lg font-medium text-center bg-zinc-700/50 text-zinc-400">
+                {plan.id === currentUserPlan ? (
+                  <div className="w-full py-3 rounded-lg font-medium text-center bg-green-500/20 text-green-400">
                     Current Plan
                   </div>
+                ) : plan.free ? (
+                  <button
+                    onClick={() => onPurchase(plan.id)}
+                    className="w-full py-3 rounded-lg font-medium bg-white/10 hover:bg-white/20 text-zinc-300 transition-colors"
+                  >
+                    Switch to Free
+                  </button>
                 ) : (
                   <button
                     className={`w-full py-3 rounded-lg font-medium transition-all ${
@@ -169,7 +184,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
           </div>
           
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
-            {selectedPlan !== 'base' ? (
+            {selectedPlan !== currentUserPlan && selectedPlan !== 'base' ? (
               <>
                 <button
                   onClick={() => onPurchase(selectedPlan)}
@@ -177,6 +192,24 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
                 >
                   <Crown className="w-5 h-5" />
                   Continue to Payment
+                </button>
+                <button
+                  onClick={onClose}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-zinc-300 font-medium py-4 px-6 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : selectedPlan !== currentUserPlan && selectedPlan === 'base' ? (
+              <>
+                <button
+                  onClick={() => {
+                    onPurchase(selectedPlan);
+                    onClose();
+                  }}
+                  className="flex-1 bg-gradient-to-r from-zinc-600 to-zinc-700 hover:from-zinc-700 hover:to-zinc-800 text-white font-medium py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
+                >
+                  Switch to Free Plan
                 </button>
                 <button
                   onClick={onClose}

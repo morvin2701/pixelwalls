@@ -202,6 +202,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const [currentUserPlan, setCurrentUserPlan] = useState<'base' | 'basic' | 'pro'>('base'); // Track current plan
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [showApiKeyInputDialog, setShowApiKeyInputDialog] = useState(false);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
@@ -333,6 +334,15 @@ const App: React.FC = () => {
   }, [selectedWallpaper]);
 
   const handlePurchase = async (planId: string) => {
+    // Handle the free base plan
+    if (planId === 'base') {
+      // For the free plan, we just close the modal and show a message
+      setShowPremiumModal(false);
+      setCurrentUserPlan('base');
+      alert('You are currently using the Base Version. Upgrade to a premium plan to unlock more features!');
+      return;
+    }
+
     try {
       // Create order through backend
       const orderData = await paymentService.createOrder({ planId });
@@ -380,6 +390,8 @@ const App: React.FC = () => {
       if (paymentSuccess) {
         setIsPremium(true);
         setShowPremiumModal(false);
+        // Set the current user plan based on what they purchased
+        setCurrentUserPlan(planId as 'basic' | 'pro');
         alert(`Thank you for purchasing the ${orderData.plan.name} plan! Enjoy your premium features.`);
       } else {
         alert('Payment was not successful. Please try again.');
@@ -425,6 +437,7 @@ const App: React.FC = () => {
                 isOpen={showPremiumModal}
                 onClose={() => setShowPremiumModal(false)}
                 onPurchase={handlePurchase}
+                currentUserPlan={currentUserPlan}
               />
             )}
           </AnimatePresence>
