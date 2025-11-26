@@ -12,7 +12,7 @@ import { ApiKeyDialog } from './components/ApiKeyDialog';
 import { ApiKeyInputDialog } from './components/ApiKeyInputDialog';
 import { PremiumModal } from './components/PremiumModal';
 import { LoginPage } from './components/LoginPage';
-import { PaymentHistory } from './components/PaymentHistory';
+import { PaymentHistoryModal } from './components/PaymentHistoryModal';
 import { Wallpaper, ViewMode, GenerationParams } from './types';
 import { generateWallpaperImage } from './services/geminiService';
 import { useApiKey } from './hooks/useApiKey';
@@ -204,6 +204,7 @@ const App: React.FC = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [showApiKeyInputDialog, setShowApiKeyInputDialog] = useState(false);
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   
   const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue, requestApiKey } = useApiKey(geminiApiKey);
   
@@ -430,17 +431,11 @@ const App: React.FC = () => {
           
           {/* Payment History Modal */}
           <AnimatePresence>
-            {activeTab === 'paymentHistory' && (
-              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="bg-zinc-900 border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-                >
-                  <PaymentHistory payments={paymentHistory} />
-                </motion.div>
-              </div>
+            {showPaymentHistory && (
+              <PaymentHistoryModal 
+                payments={paymentHistory} 
+                onClose={() => setShowPaymentHistory(false)} 
+              />
             )}
           </AnimatePresence>
 
@@ -560,8 +555,8 @@ const App: React.FC = () => {
                     <span className="text-sm font-medium hidden md:inline">Favorites</span>
                   </button>
                   <button 
-                    onClick={() => setActiveTab('paymentHistory')}
-                    className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'paymentHistory' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    onClick={() => setShowPaymentHistory(true)}
+                    className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${showPaymentHistory ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
@@ -625,6 +620,18 @@ const App: React.FC = () => {
                 <Compass className="w-6 h-6" />
               </div>
               <span className={`text-[10px] font-medium ${mobileTab === 'explore' ? 'text-purple-400' : 'text-zinc-500'}`}>Explore</span>
+            </button>
+            
+            <button 
+              onClick={() => setShowPaymentHistory(true)}
+              className="flex flex-col items-center justify-center w-1/3 h-full space-y-1.5 active:scale-95 transition-transform"
+            >
+              <div className={`p-1.5 rounded-xl transition-colors ${showPaymentHistory ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+              </div>
+              <span className={`text-[10px] font-medium ${showPaymentHistory ? 'text-purple-400' : 'text-zinc-500'}`}>Payments</span>
             </button>
           </nav>
 
