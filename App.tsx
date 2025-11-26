@@ -270,6 +270,12 @@ const App: React.FC = () => {
   };
 
   const handleGenerate = async (params: GenerationParams) => {
+    // Check if user is on Base Version plan (no generation allowed)
+    if (currentUserPlan === 'base') {
+      alert('Wallpaper generation is not available on the Base Version plan. Please upgrade to Basic Premium or Pro Premium to generate wallpapers.');
+      return;
+    }
+
     // 1. Validate API Key existence before attempting anything
     const hasKey = await validateApiKey();
     if (!hasKey) {
@@ -495,7 +501,7 @@ const App: React.FC = () => {
 
             {/* Controls */}
             <div className="flex-1 overflow-hidden">
-              <GeneratorControls onGenerate={handleGenerate} isGenerating={isGenerating} />
+              <GeneratorControls onGenerate={handleGenerate} isGenerating={isGenerating} currentUserPlan={currentUserPlan} />
             </div>
           </aside>
 

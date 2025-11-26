@@ -6,12 +6,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { GenerationParams, STYLE_PRESETS } from '../types';
-import { Wand2, Sparkles, Monitor, Smartphone, Square, Zap, History, Trash2, X, Clock } from 'lucide-react';
+import { Wand2, Sparkles, Monitor, Smartphone, Square, Zap, History, Trash2, X, Clock, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface GeneratorControlsProps {
   onGenerate: (params: GenerationParams) => void;
   isGenerating: boolean;
+  currentUserPlan: 'base' | 'basic' | 'pro'; // Add current user plan prop
 }
 
 // Helper to retrieve draft settings safely
@@ -25,7 +26,7 @@ const getDraftSettings = () => {
   }
 };
 
-export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate, isGenerating }) => {
+export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate, isGenerating, currentUserPlan }) => {
   // Initialize state with lazy loaders to restore draft from localStorage on mount
   const [prompt, setPrompt] = useState(() => getDraftSettings().prompt || '');
   
@@ -104,6 +105,12 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
   };
 
   const handleGenerate = () => {
+    // Check if user is on Base Version plan (no generation allowed)
+    if (currentUserPlan === 'base') {
+      alert('Wallpaper generation is not available on the Base Version plan. Please upgrade to Basic Premium or Pro Premium to generate wallpapers.');
+      return;
+    }
+    
     if (!prompt.trim()) return;
     
     // Save to history when generating
@@ -378,16 +385,16 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
         <div className="p-6 bg-zinc-900/90 border-t border-white/5 backdrop-blur-md z-10 shrink-0">
             <motion.button
                 onClick={handleGenerate}
-                disabled={isGenerating || !prompt.trim()}
-                whileHover={!isGenerating && prompt.trim() ? { scale: 1.02, y: -2 } : {}}
-                whileTap={!isGenerating && prompt.trim() ? { scale: 0.96 } : {}}
+                disabled={isGenerating || !prompt.trim() || currentUserPlan === 'base'}
+                whileHover={!isGenerating && prompt.trim() && currentUserPlan !== 'base' ? { scale: 1.02, y: -2 } : {}}
+                whileTap={!isGenerating && prompt.trim() && currentUserPlan !== 'base' ? { scale: 0.96 } : {}}
                 className={`w-full relative group overflow-hidden rounded-xl p-4 transition-all duration-300 ${
-                    isGenerating || !prompt.trim()
+                    isGenerating || !prompt.trim() || currentUserPlan === 'base'
                         ? 'bg-zinc-800 cursor-not-allowed opacity-50'
                         : 'shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40'
                 }`}
             >
-                <div className={`absolute inset-0 transition-opacity duration-300 ${isGenerating || !prompt.trim() ? 'opacity-0' : 'opacity-100'}`}>
+                <div className={`absolute inset-0 transition-opacity duration-300 ${isGenerating || !prompt.trim() || currentUserPlan === 'base' ? 'opacity-0' : 'opacity-100'}`}>
                     <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-gradient bg-[length:200%_auto]" />
                 </div>
 
@@ -406,20 +413,35 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
                                 {useEnhancer ? 'Refining & Designing...' : 'Designing...'}
                             </motion.span>
                         </>
+                    ) : currentUserPlan === 'base' ? (
+                        <>
+                          <Lock className="w-4 h-4 mr-1" />
+                          <span>Upgrade to Generate</span>
+                        </>
                     ) : (
                         <>
-                            <Wand2 className="w-4 h-4 mr-1 group-hover:rotate-12 transition-transform" />
-                            <span>Generate Wallpaper</span>
+                          <Wand2 className="w-4 h-4 mr-1 group-hover:rotate-12 transition-transform" />
+                          <span>Generate Wallpaper</span>
                         </>
                     )}
                 </div>
             </motion.button>
-            <div className="text-center mt-3">
-                <p className="text-[10px] text-zinc-600 flex items-center justify-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                    Gemini 3 Pro Image {useEnhancer ? '+ Flash Enhancer' : 'Raw Mode'}
+            {currentUserPlan === 'base' && (
+              <div className="text-center mt-3">
+                <p className="text-[10px] text-amber-500 flex items-center justify-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  Generation disabled on Base plan. Upgrade to generate wallpapers.
                 </p>
-            </div>
+              </div>
+            )}
+            {currentUserPlan !== 'base' && (
+              <div className="text-center mt-3">
+                <p className="text-[10px] text-zinc-600 flex items-center justify-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                  Gemini 3 Pro Image {useEnhancer ? '+ Flash Enhancer' : 'Raw Mode'}
+                </p>
+              </div>
+            )}
         </div>
 
         <style>{`
