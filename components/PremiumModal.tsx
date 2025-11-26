@@ -10,7 +10,15 @@ interface PremiumModalProps {
 }
 
 export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onPurchase, currentUserPlan }) => {
-  const [selectedPlan, setSelectedPlan] = useState<'basic' | 'pro' | 'base'>(currentUserPlan);
+  // Set default selected plan to 'pro' if user is on base plan, otherwise keep current plan
+  const [selectedPlan, setSelectedPlan] = useState<'basic' | 'pro' | 'base'>(() => {
+    if (currentUserPlan === 'base') {
+      // If user is on base plan, default to pro plan
+      return 'pro';
+    }
+    // Otherwise, keep the current plan selected
+    return currentUserPlan;
+  });
 
   if (!isOpen) return null;
 
@@ -36,7 +44,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
     {
       id: 'basic' as const,
       name: 'Basic Premium',
-      price: '₹300',
+      price: '₹299',
       description: 'Perfect for casual users - monthly subscription',
       features: [
         { text: 'Access to premium wallpaper library', available: true },
@@ -53,7 +61,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
     {
       id: 'pro' as const,
       name: 'Pro Premium',
-      price: '₹1000',
+      price: '₹999',
       description: 'For professional creators - monthly subscription',
       features: [
         { text: 'Full wallpaper generation capability', available: true },
@@ -187,7 +195,16 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, onP
             {selectedPlan !== currentUserPlan && selectedPlan !== 'base' ? (
               <>
                 <button
-                  onClick={() => onPurchase(selectedPlan)}
+                  onClick={() => {
+                    console.log('Selected plan for purchase:', selectedPlan);
+                    const selectedPlanData = plans.find(plan => plan.id === selectedPlan);
+                    console.log('Selected plan data:', selectedPlanData);
+                    if (selectedPlanData) {
+                      console.log('Plan price:', selectedPlanData.price);
+                      console.log('Plan amount in paise (from backend config):', selectedPlanData.id === 'pro' ? 100000 : 30000);
+                    }
+                    onPurchase(selectedPlan);
+                  }}
                   className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium py-4 px-6 rounded-xl transition-all shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2"
                 >
                   <Crown className="w-5 h-5" />

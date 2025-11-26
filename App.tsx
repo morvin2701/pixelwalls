@@ -473,6 +473,8 @@ const App: React.FC = () => {
   }, [selectedWallpaper]);
 
   const handlePurchase = async (planId: string) => {
+    console.log('handlePurchase called with planId:', planId);
+    
     // Handle the free base plan
     if (planId === 'base') {
       // For the free plan, we just close the modal and show a message
@@ -517,6 +519,8 @@ const App: React.FC = () => {
       };
       
       console.log('Payment options with user ID:', options);
+      console.log('Amount in paise being sent to Razorpay:', options.amount);
+      console.log('Amount in rupees being sent to Razorpay:', options.amount / 100);
       
       // Initialize payment
       const paymentSuccess = await paymentService.initiatePayment(options, backendUrl);
