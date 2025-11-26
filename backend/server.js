@@ -75,7 +75,7 @@ const premiumPlans = {
 // Route to create order
 app.post('/create-order', async (req, res) => {
   try {
-    console.log('Received create-order request:', req.body);
+    console.log('Received create-order request:', JSON.stringify(req.body, null, 2));
     const { planId } = req.body;
     
     // Validate plan
@@ -85,7 +85,7 @@ app.post('/create-order', async (req, res) => {
       return res.status(400).json({ error: 'Invalid plan selected' });
     }
     
-    console.log('Creating order for plan:', plan);
+    console.log('Creating order for plan:', JSON.stringify(plan, null, 2));
     
     // Create Razorpay order
     const options = {
@@ -94,28 +94,45 @@ app.post('/create-order', async (req, res) => {
       receipt: `receipt_${uuidv4()}`,
     };
     
-    const order = await razorpay.orders.create(options);
-    console.log('Order created successfully:', order);
+    console.log('Razorpay order options:', JSON.stringify(options, null, 2));
     
-    res.json({
+    const order = await razorpay.orders.create(options);
+    console.log('Order created successfully:', JSON.stringify(order, null, 2));
+    
+    const response = {
       orderId: order.id,
       amount: plan.amount,
       currency: plan.currency,
       plan: plan
-    });
+    };
+    
+    console.log('Sending response:', JSON.stringify(response, null, 2));
+    res.json(response);
   } catch (error) {
-    console.error('Error creating order:', error);
-    res.status(500).json({ error: 'Failed to create order', details: error.message });
+    console.error('Error creating order:');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // Log the full error object
+    console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    
+    res.status(500).json({ 
+      error: 'Failed to create order', 
+      details: error.message,
+      name: error.name
+    });
   }
 });
 
 // Route to verify payment
 app.post('/verify-payment', async (req, res) => {
   try {
-    console.log('Received verify-payment request:', req.body);
+    console.log('Received verify-payment request:', JSON.stringify(req.body, null, 2));
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     
     // Verify payment signature
+    console.log('Verifying signature with key secret:', process.env.RAZORPAY_KEY_SECRET ? 'SET' : 'NOT SET');
     const shasum = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET);
     shasum.update(`${razorpay_order_id}|${razorpay_payment_id}`);
     const digest = shasum.digest('hex');
@@ -133,15 +150,30 @@ app.post('/verify-payment', async (req, res) => {
     
     // Signature is valid
     console.log('Payment verification successful');
-    res.json({
+    const response = {
       success: true,
       orderId: razorpay_order_id,
       paymentId: razorpay_payment_id,
       signature: razorpay_signature
-    });
+    };
+    
+    console.log('Sending response:', JSON.stringify(response, null, 2));
+    res.json(response);
   } catch (error) {
-    console.error('Error verifying payment:', error);
-    res.status(500).json({ success: false, error: 'Failed to verify payment', details: error.message });
+    console.error('Error verifying payment:');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // Log the full error object
+    console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to verify payment', 
+      details: error.message,
+      name: error.name
+    });
   }
 });
 
