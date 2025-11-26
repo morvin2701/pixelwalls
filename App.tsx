@@ -373,41 +373,22 @@ const App: React.FC = () => {
     setShowApiKeyInputDialog(false);
   };
   
-  const handleLogin = async (username: string, password: string) => {
-    // Validate credentials by calling backend
+  const handleLogin = (username: string, password: string) => {
+    // Validate credentials
     console.log('Login attempt:', { username, password });
     
-    try {
-      const backendUrl = getBackendUrl();
-      console.log('Backend URL:', backendUrl);
-      
-      const response = await fetch(`${backendUrl}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      
-      console.log('Login response status:', response.status);
-      console.log('Login response headers:', [...response.headers.entries()]);
-      
-      const data = await response.json();
-      console.log('Login response data:', data);
-      
-      if (data.success) {
-        setIsAuthenticated(true);
-        setUsername(data.username); // Set username from backend response
-        // Save username to localStorage
-        localStorage.setItem('username', data.username);
-        // Save userId to localStorage for payment processing
-        localStorage.setItem('userId', data.userId);
-        // Don't set API key here - it will be set when needed
-        console.log('Login successful:', data);
-      } else {
-        alert(`Login failed: ${data.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      alert('Login failed. Please try again.');
+    // Check if username is 'abc' (case insensitive) and password is '123'
+    if (username.toLowerCase() === 'abc' && password === '123') {
+      setIsAuthenticated(true);
+      setUsername(username); // Set username
+      // Save username to localStorage
+      localStorage.setItem('username', username);
+      // Set a fixed userId for database operations
+      localStorage.setItem('userId', 'user_abc_123');
+      // Don't set API key here - it will be set when needed
+    } else {
+      // In a real app, you would show an error message
+      alert('Invalid credentials. Please use username "abc" and password "123".');
     }
   };
 
