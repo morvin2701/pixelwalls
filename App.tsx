@@ -302,7 +302,9 @@ const App: React.FC = () => {
         return window.location.hostname === 'localhost' || 
                window.location.hostname === '127.0.0.1' ||
                window.location.hostname.startsWith('localhost:') ||
-                              window.location.port === '3001';
+               window.location.port === '3001' ||
+               window.location.port === '3000' ||
+               window.location.port === '5173';
       };
       
       // For development
@@ -338,11 +340,11 @@ const App: React.FC = () => {
         setShowPremiumModal(false);
         alert(`Thank you for purchasing the ${orderData.plan.name} plan! Enjoy your premium features.`);
       } else {
-        alert('Payment failed. Please try again.');
+        alert('Payment was not successful. Please try again.');
       }
     } catch (error) {
       console.error('Payment failed:', error);
-      alert('Payment failed. Please try again.');
+      alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
     }
   };
 
