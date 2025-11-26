@@ -163,7 +163,6 @@ app.post('/create-order', async (req, res) => {
         request.input('status', sql.NVarChar, 'Pending');
         request.input('razorpay_order_id', sql.NVarChar, order.id);
         request.input('created_at', sql.DateTime2, new Date());
-        request.input('receipt', sql.NVarChar, receiptId);
         
         console.log('Executing database query with parameters:', {
           id: order.id,
@@ -173,15 +172,14 @@ app.post('/create-order', async (req, res) => {
           amount: correctedAmount,
           currency: plan.currency,
           status: 'Pending',
-          razorpay_order_id: order.id,
-          receipt: receiptId
+          razorpay_order_id: order.id
         });
         
         const result = await request.query(`
           INSERT INTO payment_history 
-          (id, user_id, plan_id, plan_name, amount, currency, status, razorpay_order_id, created_at, receipt)
+          (id, user_id, plan_id, plan_name, amount, currency, status, razorpay_order_id, created_at)
           VALUES 
-          (@id, @user_id, @plan_id, @plan_name, @amount, @currency, @status, @razorpay_order_id, @created_at, @receipt)
+          (@id, @user_id, @plan_id, @plan_name, @amount, @currency, @status, @razorpay_order_id, @created_at)
         `);
         
         console.log('Payment history saved to database. Rows affected:', result.rowsAffected);
