@@ -56,16 +56,21 @@ export const paymentService = {
   // Create order by calling backend API
   createOrder: async (params: CreateOrderParams): Promise<OrderResponse> => {
     const backendUrl = getBackendUrl();
-
-    console.log('Making request to backend URL:', backendUrl);
+    
+    console.log('=== PAYMENT SERVICE DEBUG INFO ===');
+    console.log('Backend URL:', backendUrl);
     console.log('Request params:', params);
+    console.log('Window location:', window.location.href);
+    console.log('Hostname:', window.location.hostname);
+    console.log('Port:', window.location.port);
     
     // Log the plan ID being requested
     if (params.planId) {
       console.log('Requesting plan ID:', params.planId);
     }
-
+    
     try {
+      console.log('Making request to backend URL:', backendUrl);
       const response = await fetch(`${backendUrl}/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,7 +97,22 @@ export const paymentService = {
       
       return data;
     } catch (error) {
-      console.error('Network error during order creation:', error);
+      console.error('=== NETWORK ERROR DETAILS ===');
+      console.error('Error object:', error);
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Stack trace:', error.stack);
+      
+      // More detailed error information
+      if (error instanceof TypeError) {
+        console.error('This is a network error - likely backend is unreachable');
+        console.error('Possible causes:');
+        console.error('1. Backend server is not running');
+        console.error('2. Network connectivity issues');
+        console.error('3. Firewall blocking the connection');
+        console.error('4. CORS configuration issues');
+      }
+      
       throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },

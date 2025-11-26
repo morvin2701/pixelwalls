@@ -482,7 +482,11 @@ const App: React.FC = () => {
   }, [selectedWallpaper]);
 
   const handlePurchase = async (planId: string) => {
+    console.log('=== HANDLE PURCHASE DEBUG INFO ===');
     console.log('handlePurchase called with planId:', planId);
+    console.log('Current window location:', window.location.href);
+    console.log('Current hostname:', window.location.hostname);
+    console.log('Current port:', window.location.port);
     
     // Handle the free base plan
     if (planId === 'base') {
@@ -567,8 +571,18 @@ const App: React.FC = () => {
         fetchUserPaymentHistory(userId);
       }
     } catch (error) {
+      console.error('=== PAYMENT ERROR DETAILS ===');
       console.error('Payment failed:', error);
-      alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Stack trace:', error.stack);
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        alert('Unable to connect to the payment server. Please make sure:\n\n1. The backend server is running\n2. You have internet connectivity\n3. Firewall is not blocking the connection\n\nTechnical details: ' + error.message);
+      } else {
+        alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
+      }
+      
       // Refresh payment history to show the failed transaction
       const userId = localStorage.getItem('userId');
       if (userId) {
