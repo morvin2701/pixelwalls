@@ -28,7 +28,7 @@ app.use(cors({
       'http://localhost:5173',
       'http://localhost:3000',
       'https://pixelwalls-wzsz.vercel.app',
-      'http://45.120.139.237:1433'  // Your server IP and port (not 1433)
+      'http://45.120.139.237:5000'  // Your server IP and port (not 1433)
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
