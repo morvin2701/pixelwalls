@@ -33,12 +33,9 @@ const sqlConfig = {
   port: 1433,
   database: 'PixelWalls',
   options: {
-    encrypt: true, // Enable encryption
+    encrypt: false, // Disable encryption for this server
     trustServerCertificate: true, // Accept self-signed certificates
-    enableArithAbort: true,
-    cryptoCredentialsDetails: {
-      minVersion: 'TLSv1'
-    }
+    enableArithAbort: true
   }
 };
 
