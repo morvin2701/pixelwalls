@@ -158,10 +158,25 @@ export const paymentService = {
   
   // Initialize Razorpay checkout
   initiatePayment: async (options: any, backendUrl: string): Promise<boolean> => {
-    console.log('Initializing payment with options:', options);
+    console.log('INITIATING PAYMENT WITH OPTIONS:', JSON.stringify(options, null, 2));
+    console.log('RAZORPAY AMOUNT IN PAISE:', options.amount);
+    console.log('RAZORPAY AMOUNT IN RUPEES:', options.amount / 100);
+    console.log('RAZORPAY CURRENCY:', options.currency);
+    console.log('RAZORPAY ORDER ID:', options.order_id);
+    console.log('RAZORPAY DESCRIPTION:', options.description);
+    
+    // Validate required fields
+    if (!options.key) {
+      throw new Error('Razorpay key is missing');
+    }
+    if (!options.amount) {
+      throw new Error('Payment amount is missing');
+    }
+    if (!options.order_id) {
+      throw new Error('Order ID is missing');
+    }
+    
     console.log('Backend URL for verification:', backendUrl);
-    console.log('Amount in paise:', options.amount);
-    console.log('Amount in rupees:', options.amount / 100);
     
     // Load Razorpay script
     const isScriptLoaded = await loadRazorpayScript();

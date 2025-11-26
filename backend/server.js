@@ -212,9 +212,16 @@ app.post('/create-order', async (req, res) => {
       }
     };
     
-    console.log('Final response being sent to frontend:', JSON.stringify(response, null, 2));
-    console.log('Response amount in paise:', response.amount);
-    console.log('Response amount in rupees:', response.amount / 100);
+    console.log('=== FINAL BACKEND RESPONSE ===');
+    console.log('ORDER ID:', response.orderId);
+    console.log('AMOUNT IN PAISE:', response.amount);
+    console.log('AMOUNT IN RUPEES:', response.amount / 100);
+    console.log('CURRENCY:', response.currency);
+    console.log('PLAN ID:', response.plan.id);
+    console.log('PLAN NAME:', response.plan.name);
+    console.log('FULL RESPONSE:', JSON.stringify(response, null, 2));
+    console.log('==============================');
+    
     res.json(response);
   } catch (error) {
     console.error('Error creating order:');

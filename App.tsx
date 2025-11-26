@@ -494,29 +494,15 @@ const App: React.FC = () => {
       
       console.log('Order data received from backend:', orderData);
       
-      // Prepare Razorpay options
-      const backendUrl = getBackendUrl();
-
-      // Force correct amounts for Razorpay
-      let razorpayAmount = orderData.amount;
-      let planDescription = orderData.plan.description;
-      
-      if (planId === 'pro') {
-        razorpayAmount = 100000; // ₹1000
-        planDescription = 'Pro Premium - Unlock all premium features - monthly subscription (₹1000)';
-        console.log('Forcing Razorpay amount to 100000 paise (₹1000) for Pro plan');
-      } else if (planId === 'basic') {
-        razorpayAmount = 30000; // ₹300
-        planDescription = 'Basic Premium - Unlock premium wallpapers - monthly subscription (₹300)';
-        console.log('Forcing Razorpay amount to 30000 paise (₹300) for Basic plan');
-      }
-
-      const options = {
+      // Prepare Razorpay options with explicit hardcoded values
+      const razorpayOptions = {
         key: 'rzp_test_RkFCO2cOtggjtn',
-        amount: razorpayAmount,
-        currency: orderData.currency,
+        amount: planId === 'pro' ? 100000 : 30000, // ₹1000 for pro, ₹300 for basic
+        currency: 'INR',
         name: 'PixelWalls',
-        description: planDescription,
+        description: planId === 'pro' 
+          ? 'Pro Premium - Unlock all premium features - monthly subscription (₹1000)' 
+          : 'Basic Premium - Unlock premium wallpapers - monthly subscription (₹300)',
         order_id: orderData.orderId,
         prefill: {
           name: username,
@@ -525,19 +511,21 @@ const App: React.FC = () => {
         },
         notes: {
           plan_id: planId,
-          user_id: username
+          user_id: username,
+          plan_name: planId === 'pro' ? 'Pro Premium' : 'Basic Premium',
+          amount_inr: planId === 'pro' ? '1000' : '300'
         },
         theme: {
           color: '#6366f1'
         }
       };
       
-      console.log('Payment options with user ID:', options);
-      console.log('Amount in paise being sent to Razorpay:', options.amount);
-      console.log('Amount in rupees being sent to Razorpay:', options.amount / 100);
+      console.log('FINAL RAZORPAY OPTIONS BEING SENT:', JSON.stringify(razorpayOptions, null, 2));
+      console.log('AMOUNT IN PAISE:', razorpayOptions.amount);
+      console.log('AMOUNT IN RUPEES:', razorpayOptions.amount / 100);
       
       // Initialize payment
-      const paymentSuccess = await paymentService.initiatePayment(options, backendUrl);
+      const paymentSuccess = await paymentService.initiatePayment(razorpayOptions, getBackendUrl());
       
       if (paymentSuccess) {
         setIsPremium(true);
