@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, KeyRound, Sparkles, Loader2, ArrowRight } from 'lucide-react';
+import { User, Lock, Sparkles, Loader2, ArrowRight } from 'lucide-react';
 
 interface LoginPageProps {
-  onLogin: (username: string, password: string, apiKey: string) => void;
+  onLogin: (username: string, password: string) => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [apiKey, setApiKey] = useState(() => {
-    // Try to get API key from localStorage
-    return localStorage.getItem('geminiApiKey') || '';
-  });
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,7 +18,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    onLogin(username, password, apiKey);
+    onLogin(username, password);
     setIsLoading(false);
   };
 
@@ -93,7 +89,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
           
           {/* Password Field */}
-          <div className="mb-6">
+          <div className="mb-8">
             <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
               Password
             </label>
@@ -104,24 +100,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full bg-transparent text-white placeholder-zinc-500 focus:outline-none"
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-          
-          {/* API Key Field */}
-          <div className="mb-8">
-            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
-              API Key
-            </label>
-            <div className="relative flex items-center bg-zinc-900/80 border border-white/10 rounded-xl px-4 py-3 focus-within:border-white/30 transition-colors hover:border-white/20">
-              <KeyRound className="w-5 h-5 text-zinc-500 mr-3" />
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter your Gemini API key"
                 className="w-full bg-transparent text-white placeholder-zinc-500 focus:outline-none"
                 disabled={isLoading}
               />
@@ -153,7 +131,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         {/* Demo Credentials */}
         <div className="mt-6 text-center text-xs text-zinc-500">
           <p>Demo credentials: Username: <span className="font-mono bg-zinc-800 px-1.5 py-0.5 rounded">abc</span> Password: <span className="font-mono bg-zinc-800 px-1.5 py-0.5 rounded">123</span></p>
-          <p className="mt-2">Your API key is securely stored in your browser and will be remembered for future sessions.</p>
           <p className="mt-2">By signing in, you agree to our Terms of Service and Privacy Policy.</p>
         </div>
       </motion.div>

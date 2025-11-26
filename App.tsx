@@ -203,7 +203,7 @@ const App: React.FC = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   
-  const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey(geminiApiKey);
+  const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue, requestApiKey } = useApiKey(geminiApiKey);
   
   // Fetch payment history when payment history tab is active
   useEffect(() => {
@@ -222,16 +222,14 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogin = (username: string, password: string, apiKey: string) => {
+  const handleLogin = (username: string, password: string) => {
     // Validate credentials
-    console.log('Login attempt:', { username, password, apiKey });
+    console.log('Login attempt:', { username, password });
     
     // Check if username is 'abc' (case insensitive) and password is '123'
     if (username.toLowerCase() === 'abc' && password === '123') {
       setIsAuthenticated(true);
-      setGeminiApiKey(apiKey);
-      // Also store in localStorage for persistence across sessions
-      localStorage.setItem('geminiApiKey', apiKey);
+      // Don't set API key here - it will be set when needed
     } else {
       // In a real app, you would show an error message
       alert('Invalid credentials. Please use username "abc" and password "123".');
@@ -252,7 +250,11 @@ const App: React.FC = () => {
   const handleGenerate = async (params: GenerationParams) => {
     // 1. Validate API Key existence before attempting anything
     const hasKey = await validateApiKey();
-    if (!hasKey) return;
+    if (!hasKey) {
+      // If no API key, show the dialog to request one
+      requestApiKey();
+      return;
+    }
 
     setIsGenerating(true);
     setError(null);
@@ -289,7 +291,7 @@ const App: React.FC = () => {
         errorMessage.toLowerCase().includes('permission denied')
       ) {
          // Re-trigger dialog if the key was rejected by the backend
-         setShowApiKeyDialog(true);
+         requestApiKey();
          // Stop here, do not show the generic error toast
          return; 
       }

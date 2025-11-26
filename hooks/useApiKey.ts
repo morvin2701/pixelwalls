@@ -27,7 +27,7 @@ export const useApiKey = (storedApiKey?: string | null) => {
       if (process.env.GEMINI_API_KEY) {
         return true;
       }
-      setShowApiKeyDialog(true);
+      // Don't automatically show dialog - return false to indicate no key
       return false;
     }
     
@@ -36,12 +36,12 @@ export const useApiKey = (storedApiKey?: string | null) => {
       try {
         const hasKey = await aistudio.hasSelectedApiKey();
         if (!hasKey) {
-          setShowApiKeyDialog(true);
+          // Don't automatically show dialog - return false to indicate no key
           return false;
         }
       } catch (error) {
         console.warn('API Key check failed', error);
-        setShowApiKeyDialog(true);
+        // Don't automatically show dialog - return false to indicate no key
         return false;
       }
     }
@@ -56,10 +56,16 @@ export const useApiKey = (storedApiKey?: string | null) => {
     }
   }, []);
 
+  // New function to manually show the API key dialog
+  const requestApiKey = useCallback(() => {
+    setShowApiKeyDialog(true);
+  }, []);
+
   return {
     showApiKeyDialog,
     setShowApiKeyDialog,
     validateApiKey,
     handleApiKeyDialogContinue,
+    requestApiKey // Export the new function
   };
 };
