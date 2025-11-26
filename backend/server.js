@@ -33,7 +33,9 @@ const sqlConfig = {
   options: {
     encrypt: false,
     trustServerCertificate: true,
-    enableArithAbort: true
+    enableArithAbort: true,
+    connectTimeout: 30000,  // 30 second connection timeout
+    requestTimeout: 30000   // 30 second request timeout
   }
 };
 
