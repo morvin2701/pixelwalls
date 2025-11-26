@@ -58,6 +58,11 @@ export const paymentService = {
 
     console.log('Making request to backend URL:', backendUrl);
     console.log('Request params:', params);
+    
+    // Log the plan ID being requested
+    if (params.planId) {
+      console.log('Requesting plan ID:', params.planId);
+    }
 
     try {
       const response = await fetch(`${backendUrl}/create-order`, {
@@ -77,6 +82,13 @@ export const paymentService = {
       
       const data = await response.json();
       console.log('Order creation response:', data);
+      
+      // Log the amount being returned from backend
+      if (data.amount) {
+        console.log('Amount received from backend in paise:', data.amount);
+        console.log('Amount received from backend in rupees:', data.amount / 100);
+      }
+      
       return data;
     } catch (error) {
       console.error('Network error during order creation:', error);

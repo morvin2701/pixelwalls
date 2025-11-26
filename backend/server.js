@@ -132,6 +132,9 @@ const premiumPlans = {
   }
 };
 
+// Log the premium plans configuration
+console.log('Premium plans configuration:', JSON.stringify(premiumPlans, null, 2));
+
 // In-memory storage for payment history (in a real app, this would be a database)
 
 // Route to create order
@@ -148,6 +151,9 @@ app.post('/create-order', async (req, res) => {
     }
     
     console.log('Creating order for plan:', JSON.stringify(plan, null, 2));
+    console.log('Plan ID requested:', planId);
+    console.log('Plan amount in paise:', plan.amount);
+    console.log('Plan amount in rupees:', plan.amount / 100);
     
     // Create Razorpay order
     // Fix: Shorten the receipt ID to be under 40 characters
