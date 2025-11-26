@@ -188,8 +188,24 @@ export const paymentService = {
         }
       });
       
-      rzp.on('payment.failed', function (response: any) {
+      rzp.on('payment.failed', async function (response: any) {
         console.error('Payment failed:', response.error);
+        
+        try {
+          // Send failed payment details to backend to update payment history
+          const backendUrl = getBackendUrl();
+          await fetch(`${backendUrl}/payment-failed`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.error.metadata.order_id,
+              error: response.error
+            })
+          });
+        } catch (error) {
+          console.error('Error updating failed payment status:', error);
+        }
+        
         resolve(false);
       });
       
