@@ -43,13 +43,17 @@ const isDevelopment = () => {
          window.location.port === '5173';
 };
 
+// Get the backend URL based on environment
+const getBackendUrl = () => {
+  return isDevelopment() 
+    ? 'http://localhost:5000' 
+    : 'https://pixelwallsbackend.onrender.com';
+};
+
 export const paymentService = {
   // Create order by calling backend API
   createOrder: async (params: CreateOrderParams): Promise<OrderResponse> => {
-    // For development
-    const backendUrl = isDevelopment() 
-      ? 'http://localhost:5000' 
-      : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
+    const backendUrl = getBackendUrl();
 
     console.log('Making request to backend URL:', backendUrl);
     console.log('Request params:', params);
@@ -81,10 +85,7 @@ export const paymentService = {
   
   // Verify payment by calling backend API
   verifyPayment: async (params: VerifyPaymentParams): Promise<{ success: boolean }> => {
-    // For development
-    const backendUrl = isDevelopment() 
-      ? 'http://localhost:5000' 
-      : 'https://pixelwallsbackend.onrender.com'; // Your deployed backend URL
+    const backendUrl = getBackendUrl();
 
     console.log('Verifying payment with backend URL:', backendUrl);
     console.log('Verification params:', params);
@@ -109,6 +110,35 @@ export const paymentService = {
       return data;
     } catch (error) {
       console.error('Network error during payment verification:', error);
+      throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+  
+  // Fetch payment history from backend
+  fetchPaymentHistory: async (): Promise<any[]> => {
+    const backendUrl = getBackendUrl();
+    
+    try {
+      console.log('Fetching payment history from:', `${backendUrl}/payment-history`);
+      
+      const response = await fetch(`${backendUrl}/payment-history`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      console.log('Payment history response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch payment history. Status:', response.status, 'Error:', errorText);
+        throw new Error(`Failed to fetch payment history: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Payment history response:', data);
+      return data;
+    } catch (error) {
+      console.error('Network error during payment history fetch:', error);
       throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },

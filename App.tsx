@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { GeneratorControls } from './components/GeneratorControls';
 import { ImageGrid } from './components/ImageGrid';
 import { ImageModal } from './components/ImageModal';
@@ -201,39 +201,27 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
-  const [paymentHistory, setPaymentHistory] = useState<any[]>([
-    // Sample payment history data
-    {
-      id: '1',
-      planName: 'Basic Premium',
-      amount: 29900,
-      currency: 'INR',
-      status: 'Received',
-      date: '2025-11-20T10:30:00Z',
-      transactionId: 'txn_1234567890'
-    },
-    {
-      id: '2',
-      planName: 'Pro Premium',
-      amount: 59900,
-      currency: 'INR',
-      status: 'Rejected',
-      date: '2025-11-15T14:45:00Z',
-      transactionId: 'txn_0987654321'
-    },
-    {
-      id: '3',
-      planName: 'Basic Premium',
-      amount: 29900,
-      currency: 'INR',
-      status: 'Pending',
-      date: '2025-11-10T09:15:00Z',
-      transactionId: 'txn_1122334455'
-    }
-  ]);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   
   const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey(geminiApiKey);
   
+  // Fetch payment history when payment history tab is active
+  useEffect(() => {
+    if (activeTab === 'paymentHistory') {
+      fetchPaymentHistory();
+    }
+  }, [activeTab]);
+  
+  const fetchPaymentHistory = async () => {
+    try {
+      const history = await paymentService.fetchPaymentHistory();
+      setPaymentHistory(history);
+    } catch (error) {
+      console.error('Failed to fetch payment history:', error);
+      setError('Failed to load payment history. Please try again.');
+    }
+  };
+
   const handleLogin = (username: string, password: string, apiKey: string) => {
     // Validate credentials
     console.log('Login attempt:', { username, password, apiKey });
