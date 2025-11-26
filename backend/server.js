@@ -33,8 +33,12 @@ const sqlConfig = {
   port: 1433,
   database: 'PixelWalls',
   options: {
-    encrypt: true, // Enable encryption for Azure SQL Database
-    trustServerCertificate: true // Accept self-signed certificates
+    encrypt: true, // Enable encryption
+    trustServerCertificate: true, // Accept self-signed certificates
+    enableArithAbort: true,
+    cryptoCredentialsDetails: {
+      minVersion: 'TLSv1'
+    }
   }
 };
 
