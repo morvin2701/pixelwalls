@@ -155,12 +155,22 @@ app.post('/create-order', async (req, res) => {
     console.log('Plan amount in paise:', plan.amount);
     console.log('Plan amount in rupees:', plan.amount / 100);
     
+    // Force correct amounts for each plan
+    let correctedAmount = plan.amount;
+    if (planId === 'pro') {
+      correctedAmount = 100000; // ₹1000
+      console.log('Correcting Pro plan amount to 100000 paise (₹1000)');
+    } else if (planId === 'basic') {
+      correctedAmount = 30000; // ₹300
+      console.log('Correcting Basic plan amount to 30000 paise (₹300)');
+    }
+    
     // Create Razorpay order
     // Fix: Shorten the receipt ID to be under 40 characters
     const receiptId = `receipt_${Date.now()}`.substring(0, 40);
     
     const options = {
-      amount: plan.amount,
+      amount: correctedAmount,
       currency: plan.currency,
       receipt: receiptId,
     };
@@ -176,7 +186,7 @@ app.post('/create-order', async (req, res) => {
       userId: userId, // Associate with user
       planId: plan.id,
       planName: plan.name,
-      amount: plan.amount,
+      amount: correctedAmount,
       currency: plan.currency,
       status: 'Pending',
       createdAt: new Date().toISOString(),
@@ -191,9 +201,12 @@ app.post('/create-order', async (req, res) => {
     
     const response = {
       orderId: order.id,
-      amount: plan.amount,
+      amount: correctedAmount,
       currency: plan.currency,
-      plan: plan
+      plan: {
+        ...plan,
+        amount: correctedAmount
+      }
     };
     
     console.log('Sending response:', JSON.stringify(response, null, 2));
