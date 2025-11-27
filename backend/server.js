@@ -714,6 +714,19 @@ app.post('/register', async (req, res) => {
         `);
         
         console.log('User registered successfully:', username);
+        
+        // Create an entry in user_generation_counts table
+        try {
+          const insertCountRequest = dbPool.request();
+          insertCountRequest.input('user_id', sql.NVarChar, userId);
+          await insertCountRequest.query(`
+            INSERT INTO user_generation_counts (user_id, basic_plan_count) VALUES (@user_id, 0)
+          `);
+          console.log(`Created generation count entry for new user: ${userId}`);
+        } catch (insertError) {
+          console.error('Error creating generation count entry for new user:', insertError);
+        }
+        
         res.json({ 
           success: true, 
           userId: userId,
@@ -774,6 +787,18 @@ app.post('/login', async (req, res) => {
           `);
           
           console.log(`New user ${username} created in database with ID: ${userId}`);
+          
+          // Create an entry in user_generation_counts table
+          try {
+            const insertCountRequest = dbPool.request();
+            insertCountRequest.input('user_id', sql.NVarChar, userId);
+            await insertCountRequest.query(`
+              INSERT INTO user_generation_counts (user_id, basic_plan_count) VALUES (@user_id, 0)
+            `);
+            console.log(`Created generation count entry for new user: ${userId}`);
+          } catch (insertError) {
+            console.error('Error creating generation count entry for new user:', insertError);
+          }
         }
         
         console.log(`User ${username} logged in successfully`);
@@ -830,7 +855,7 @@ app.get('/user-generation-limit/:userId', async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameter: userId' });
     }
     
-    // Get user's current plan
+    // Get user's current plan by checking their most recent payment
     let userPlan = null;
     if (dbPool) {
       try {
@@ -847,7 +872,29 @@ app.get('/user-generation-limit/:userId', async (req, res) => {
           userPlan = result.recordset[0].plan_id;
         }
       } catch (dbError) {
-        console.error('Error fetching user plan:', dbError);
+        console.error('Error fetching user plan from payment history:', dbError);
+      }
+    }
+    
+    // If we couldn't determine the plan from payment history, 
+    // check if the user exists in the users table (they should exist if they're logged in)
+    if (!userPlan && dbPool) {
+      try {
+        const request = dbPool.request();
+        request.input('user_id', sql.NVarChar, userId);
+        
+        // Check if user exists
+        const result = await request.query(`
+          SELECT id FROM users WHERE id = @user_id
+        `);
+        
+        if (result.recordset.length > 0) {
+          // User exists, assume they have a basic plan if the frontend is calling this
+          // The frontend only calls this for basic plan users
+          userPlan = 'basic';
+        }
+      } catch (dbError) {
+        console.error('Error checking if user exists:', dbError);
       }
     }
     
@@ -909,7 +956,7 @@ app.post('/increment-generation-count/:userId', async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameter: userId' });
     }
     
-    // Get user's current plan
+    // Get user's current plan by checking their most recent payment
     let userPlan = null;
     if (dbPool) {
       try {
@@ -926,7 +973,29 @@ app.post('/increment-generation-count/:userId', async (req, res) => {
           userPlan = result.recordset[0].plan_id;
         }
       } catch (dbError) {
-        console.error('Error fetching user plan:', dbError);
+        console.error('Error fetching user plan from payment history:', dbError);
+      }
+    }
+    
+    // If we couldn't determine the plan from payment history, 
+    // check if the user exists in the users table (they should exist if they're logged in)
+    if (!userPlan && dbPool) {
+      try {
+        const request = dbPool.request();
+        request.input('user_id', sql.NVarChar, userId);
+        
+        // We'll increment the count for any user that exists in the database
+        // The frontend will only call this for basic plan users
+        const result = await request.query(`
+          SELECT id FROM users WHERE id = @user_id
+        `);
+        
+        if (result.recordset.length > 0) {
+          // User exists, we'll increment their count
+          userPlan = 'basic'; // Assume basic since frontend only calls this for basic users
+        }
+      } catch (dbError) {
+        console.error('Error checking if user exists:', dbError);
       }
     }
     
