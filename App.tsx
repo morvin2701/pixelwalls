@@ -22,6 +22,26 @@ import { indexedDBService } from './services/indexedDBService';
 import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
+// Helper function to get backend URL
+const getBackendUrl = () => {
+  // Determine if we're in development or production
+  const isDevelopment = () => {
+    // Check if we're running on localhost
+    return window.location.hostname === 'localhost' || 
+           window.location.hostname === '127.0.0.1' ||
+           window.location.hostname.startsWith('localhost:') ||
+           window.location.port.startsWith('300') ||  // This will match 3000, 3001, 3002, etc.
+           window.location.port === '5173' ||
+           window.location.port === '3000';  // Add port 3000 as development port
+  };
+  
+  // For production, use your Render backend URL
+  // For development, use localhost:5000
+  return isDevelopment() 
+    ? 'http://localhost:5000' 
+    : 'https://pixelwallsbackend.onrender.com';  // Use your Render backend URL
+};
+
 // Initial Placeholder Data
 const INITIAL_WALLPAPERS: Wallpaper[] = [
   {
@@ -523,6 +543,23 @@ const App: React.FC = () => {
       return;
     }
 
+    // Check generation limit for Basic Premium users
+    if (currentUserPlan === 'basic') {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        try {
+          const limitCheck = await paymentService.checkGenerationLimit(userId);
+          if (limitCheck.limitExceeded) {
+            alert(limitCheck.message || 'You have reached the limit of 10 images for the Basic Premium plan. Please upgrade to Pro Premium for unlimited generations.');
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking generation limit:', error);
+          // Continue with generation if there's an error checking the limit
+        }
+      }
+    }
+
     // 1. Validate API Key existence before attempting anything
     const hasKey = await validateApiKey();
     if (!hasKey) {
@@ -554,6 +591,20 @@ const App: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       setWallpapers((prev) => [newWallpaper, ...prev]);
+
+      // Increment generation count for Basic Premium users
+      if (currentUserPlan === 'basic') {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          try {
+            // Call backend to increment count (fire and forget)
+            fetch(`${getBackendUrl()}/increment-generation-count/${userId}`, { method: 'POST' })
+              .catch(error => console.error('Error incrementing generation count:', error));
+          } catch (error) {
+            console.error('Error incrementing generation count:', error);
+          }
+        }
+      }
     } catch (err: any) {
       console.error(err);
       const errorMessage = err.message || String(err);

@@ -613,6 +613,72 @@ app.get('/user-plan/:userId', async (req, res) => {
   }
 });
 
+// Function to get user's generation count
+async function getUserGenerationCount(userId) {
+  try {
+    if (!dbPool) {
+      console.log('Database not connected, returning default count');
+      return 0;
+    }
+    
+    const request = dbPool.request();
+    request.input('user_id', sql.NVarChar, userId);
+    
+    const result = await request.query(`
+      SELECT basic_plan_count FROM user_generation_counts WHERE user_id = @user_id
+    `);
+    
+    if (result.recordset.length > 0) {
+      return result.recordset[0].basic_plan_count;
+    } else {
+      // If no record exists, create one
+      const insertRequest = dbPool.request();
+      insertRequest.input('user_id', sql.NVarChar, userId);
+      await insertRequest.query(`
+        INSERT INTO user_generation_counts (user_id, basic_plan_count) VALUES (@user_id, 0)
+      `);
+      return 0;
+    }
+  } catch (error) {
+    console.error('Error getting user generation count:', error);
+    return 0;
+  }
+}
+
+// Function to increment user's generation count
+async function incrementUserGenerationCount(userId) {
+  try {
+    if (!dbPool) {
+      console.log('Database not connected, cannot increment count');
+      return false;
+    }
+    
+    const request = dbPool.request();
+    request.input('user_id', sql.NVarChar, userId);
+    
+    const result = await request.query(`
+      UPDATE user_generation_counts 
+      SET basic_plan_count = basic_plan_count + 1 
+      WHERE user_id = @user_id
+    `);
+    
+    // If no rows were affected, the user doesn't have a record yet
+    if (result.rowsAffected[0] === 0) {
+      // Create a new record for the user
+      const insertRequest = dbPool.request();
+      insertRequest.input('user_id', sql.NVarChar, userId);
+      await insertRequest.query(`
+        INSERT INTO user_generation_counts (user_id, basic_plan_count) VALUES (@user_id, 1)
+      `);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error incrementing user generation count:', error);
+    return false;
+  }
+}
+
 // Route to register a new user
 app.post('/register', async (req, res) => {
   try {
@@ -752,29 +818,136 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Test database connection endpoint
-app.get('/test-db', async (req, res) => {
+// Route to check user's generation limit
+app.get('/user-generation-limit/:userId', async (req, res) => {
   try {
-    if (!dbPool) {
-      return res.status(500).json({ error: 'Database connection not available' });
+    const { userId } = req.params;
+    console.log(`Checking generation limit for user: ${userId}`);
+    
+    // Validate inputs
+    if (!userId) {
+      console.error('Missing required parameter: userId');
+      return res.status(400).json({ error: 'Missing required parameter: userId' });
     }
     
-    console.log('Testing database connection...');
+    // Get user's current plan
+    let userPlan = null;
+    if (dbPool) {
+      try {
+        const request = dbPool.request();
+        request.input('user_id', sql.NVarChar, userId);
+        
+        const result = await request.query(`
+          SELECT TOP 1 * FROM payment_history 
+          WHERE user_id = @user_id AND status = 'Received'
+          ORDER BY created_at DESC
+        `);
+        
+        if (result.recordset.length > 0) {
+          userPlan = result.recordset[0].plan_id;
+        }
+      } catch (dbError) {
+        console.error('Error fetching user plan:', dbError);
+      }
+    }
     
-    // Test query to check if we can access the tables
-    const result = await dbPool.request().query('SELECT TOP 5 * FROM payment_history ORDER BY created_at DESC');
-    console.log('Database test query result:', result.recordset);
+    // If user is on Pro plan, no limit
+    if (userPlan === 'pro') {
+      return res.json({
+        limitExceeded: false,
+        plan: 'pro',
+        message: 'Pro plan has unlimited generations'
+      });
+    }
     
-    res.json({ 
-      status: 'Database connection successful',
-      payment_history_sample: result.recordset
+    // If user is on Basic plan, check limit
+    if (userPlan === 'basic') {
+      const generationCount = await getUserGenerationCount(userId);
+      const limit = 10; // Basic plan limit
+      
+      if (generationCount >= limit) {
+        return res.json({
+          limitExceeded: true,
+          plan: 'basic',
+          currentCount: generationCount,
+          limit: limit,
+          message: 'Basic plan limit reached. Please upgrade to Pro plan for unlimited generations.'
+        });
+      } else {
+        return res.json({
+          limitExceeded: false,
+          plan: 'basic',
+          currentCount: generationCount,
+          limit: limit,
+          remaining: limit - generationCount,
+          message: `You have ${limit - generationCount} generations remaining.`
+        });
+      }
+    }
+    
+    // If no plan or base plan
+    return res.json({
+      limitExceeded: true,
+      plan: 'base',
+      message: 'Base plan does not allow image generation. Please upgrade to Basic or Pro plan.'
     });
   } catch (error) {
-    console.error('Database test error:', error);
-    res.status(500).json({ 
-      error: 'Database test failed',
-      details: error.message
-    });
+    console.error('Error checking user generation limit:', error);
+    res.status(500).json({ error: 'Failed to check generation limit' });
+  }
+});
+
+// Route to increment user's generation count
+app.post('/increment-generation-count/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log(`Incrementing generation count for user: ${userId}`);
+    
+    // Validate inputs
+    if (!userId) {
+      console.error('Missing required parameter: userId');
+      return res.status(400).json({ error: 'Missing required parameter: userId' });
+    }
+    
+    // Get user's current plan
+    let userPlan = null;
+    if (dbPool) {
+      try {
+        const request = dbPool.request();
+        request.input('user_id', sql.NVarChar, userId);
+        
+        const result = await request.query(`
+          SELECT TOP 1 * FROM payment_history 
+          WHERE user_id = @user_id AND status = 'Received'
+          ORDER BY created_at DESC
+        `);
+        
+        if (result.recordset.length > 0) {
+          userPlan = result.recordset[0].plan_id;
+        }
+      } catch (dbError) {
+        console.error('Error fetching user plan:', dbError);
+      }
+    }
+    
+    // Only increment count for Basic plan users
+    if (userPlan === 'basic') {
+      const success = await incrementUserGenerationCount(userId);
+      if (success) {
+        console.log(`Successfully incremented generation count for user: ${userId}`);
+        return res.json({ success: true, message: 'Generation count incremented' });
+      } else {
+        console.error(`Failed to increment generation count for user: ${userId}`);
+        return res.status(500).json({ success: false, error: 'Failed to increment generation count' });
+      }
+    }
+    
+    // For Pro plan users or users without a plan, don't increment count
+    console.log(`No need to increment count for user: ${userId} (plan: ${userPlan || 'none'})`);
+    return res.json({ success: true, message: 'No count increment needed' });
+  } catch (error) {
+    console.error('Error incrementing user generation count:', error);
+    res.status(500).json({ success: false, error: 'Failed to increment generation count' });
   }
 });
 
@@ -799,6 +972,8 @@ app.get('/', (req, res) => {
       'POST /login': 'Login a user',
       'GET /test-db': 'Test database connection',
       'GET /health': 'Health check endpoint',
+      'GET /user-generation-limit/:userId': 'Check user\'s generation limit',
+      'POST /increment-generation-count/:userId': 'Increment user\'s generation count',
       'GET /': 'This welcome message'
     },
     timestamp: new Date().toISOString()

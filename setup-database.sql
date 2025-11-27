@@ -39,6 +39,15 @@ CREATE TABLE payment_history (
 );
 GO
 
+-- 5. Create the user_generation_counts table
+CREATE TABLE user_generation_counts (
+    user_id NVARCHAR(255) PRIMARY KEY,
+    basic_plan_count INT DEFAULT 0,
+    last_reset_date DATETIME2 DEFAULT GETDATE(),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+GO
+
 -- 5. Insert a test user
 INSERT INTO users (id, username, created_at)
 VALUES ('user_abc_123', 'abc', GETDATE());

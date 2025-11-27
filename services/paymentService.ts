@@ -216,6 +216,41 @@ export const paymentService = {
     }
   },
   
+  // Check user's generation limit
+  checkGenerationLimit: async (userId: string): Promise<{ limitExceeded: boolean; plan?: string; currentCount?: number; limit?: number; message?: string }> => {
+    const backendUrl = getBackendUrl();
+    
+    if (!userId) {
+      console.error('User ID is required to check generation limit');
+      return { limitExceeded: true, message: 'User not authenticated' };
+    }
+    
+    try {
+      console.log('Checking generation limit for user:', userId);
+      console.log('Fetching from URL:', `${backendUrl}/user-generation-limit/${userId}`);
+      
+      const response = await fetch(`${backendUrl}/user-generation-limit/${userId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      console.log('Generation limit check response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to check generation limit. Status:', response.status, 'Error:', errorText);
+        return { limitExceeded: false }; // Allow generation if there's an error
+      }
+      
+      const data = await response.json();
+      console.log('Generation limit check result:', data);
+      return data;
+    } catch (error) {
+      console.error('Network error during generation limit check:', error);
+      return { limitExceeded: false }; // Allow generation if there's an error
+    }
+  },
+  
   // Initialize Razorpay checkout
   initiatePayment: async (options: any, backendUrl: string): Promise<boolean> => {
     console.log('INITIATING PAYMENT WITH OPTIONS:', JSON.stringify(options, null, 2));
