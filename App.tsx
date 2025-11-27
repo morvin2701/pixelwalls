@@ -230,6 +230,22 @@ const App: React.FC = () => {
     if (savedApiKey) {
       setGeminiApiKey(savedApiKey);
     }
+    
+    // Load user wallpapers from localStorage
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
+      if (savedWallpapers) {
+        try {
+          const parsedWallpapers = JSON.parse(savedWallpapers);
+          setWallpapers(parsedWallpapers);
+        } catch (e) {
+          console.error('Failed to parse saved wallpapers:', e);
+          // Fall back to initial wallpapers if parsing fails
+          setWallpapers(INITIAL_WALLPAPERS);
+        }
+      }
+    }
   }, []);
   
   // Fetch user's plan from backend when authenticated
@@ -242,15 +258,15 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated]);
 
-  // Fetch payment history when payment history tab is active or when showPaymentHistory changes
+  // Save wallpapers to localStorage whenever they change
   useEffect(() => {
-    if ((activeTab === 'paymentHistory' || showPaymentHistory) && isAuthenticated) {
+    if (isAuthenticated) {
       const userId = localStorage.getItem('userId');
       if (userId) {
-        fetchUserPaymentHistory(userId);
+        localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(wallpapers));
       }
     }
-  }, [activeTab, showPaymentHistory, isAuthenticated]);
+  }, [wallpapers, isAuthenticated]);
   
   const fetchUserPlan = async (userId: string) => {
     try {
@@ -387,7 +403,23 @@ const App: React.FC = () => {
       // Save username to localStorage
       localStorage.setItem('username', username);
       // Set a fixed userId for database operations
-      localStorage.setItem('userId', 'user_abc_123');
+      const userId = 'user_abc_123';
+      localStorage.setItem('userId', userId);
+      // Load user-specific wallpapers
+      const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
+      if (savedWallpapers) {
+        try {
+          const parsedWallpapers = JSON.parse(savedWallpapers);
+          setWallpapers(parsedWallpapers);
+        } catch (e) {
+          console.error('Failed to parse saved wallpapers:', e);
+          // Fall back to initial wallpapers if parsing fails
+          setWallpapers(INITIAL_WALLPAPERS);
+        }
+      } else {
+        // If no saved wallpapers, use initial wallpapers
+        setWallpapers(INITIAL_WALLPAPERS);
+      }
       // Don't set API key here - it will be set when needed
     } else {
       // In a real app, you would show an error message
@@ -407,9 +439,8 @@ const App: React.FC = () => {
     // Reset plan to base
     setCurrentUserPlan('base');
     setIsPremium(false);
-    // Clear wallpapers
+    // Clear wallpapers from state but keep them in localStorage for when user logs back in
     setWallpapers(INITIAL_WALLPAPERS);
-    localStorage.removeItem('pixelWalls');
   };
 
   const handleGenerate = async (params: GenerationParams) => {
