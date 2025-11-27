@@ -182,13 +182,19 @@ export const paymentService = {
   },
   
   // Fetch payment history from backend
-  fetchPaymentHistory: async (): Promise<any[]> => {
+  fetchPaymentHistory: async (userId: string): Promise<any[]> => {
     const backendUrl = getBackendUrl();
     
+    if (!userId) {
+      console.error('User ID is required to fetch payment history');
+      return [];
+    }
+    
     try {
-      console.log('Fetching payment history from:', `${backendUrl}/payment-history`);
+      console.log('Fetching payment history for user:', userId);
+      console.log('Fetching from URL:', `${backendUrl}/user-payment-history/${userId}`);
       
-      const response = await fetch(`${backendUrl}/payment-history`, {
+      const response = await fetch(`${backendUrl}/user-payment-history/${userId}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -281,9 +287,9 @@ export const paymentService = {
         console.error('Payment failed:', response.error);
         
         try {
-          // Extract user_id from error metadata if available
-          const userId = response.error.metadata?.user_id;
-          console.log('User ID from failed payment:', userId);
+          // Extract user_id from options notes if available
+          const userId = options.notes?.user_id;
+          console.log('User ID from payment options:', userId);
           
           // Send failed payment details to backend to update payment history
           const backendUrl = getBackendUrl();
