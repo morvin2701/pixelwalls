@@ -49,6 +49,10 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
      return val !== undefined ? val : true;
   });
   
+  // State for generation count (for Basic Premium users)
+  const [generationCount, setGenerationCount] = useState<number>(0);
+  const [generationLimit, setGenerationLimit] = useState<number>(10);
+  
   // History State
   const [history, setHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -64,6 +68,46 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
       console.warn('Failed to load prompt history', e);
     }
   }, []);
+
+  // Load generation count for Basic Premium users
+  useEffect(() => {
+    const loadGenerationCount = async () => {
+      if (currentUserPlan === 'basic') {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          try {
+            // Get backend URL
+            const isDevelopment = () => {
+              return window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1' ||
+                     window.location.hostname.startsWith('localhost:') ||
+                     window.location.port.startsWith('300') ||
+                     window.location.port === '5173' ||
+                     window.location.port === '3000';
+            };
+            
+            const backendUrl = isDevelopment() 
+              ? 'http://localhost:5000' 
+              : 'https://pixelwallsbackend.onrender.com';
+            
+            // Fetch generation limit from backend
+            const response = await fetch(`${backendUrl}/user-generation-limit/${userId}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.plan === 'basic' && data.currentCount !== undefined) {
+                setGenerationCount(data.currentCount);
+                setGenerationLimit(data.limit || 10);
+              }
+            }
+          } catch (error) {
+            console.error('Error loading generation count:', error);
+          }
+        }
+      }
+    };
+    
+    loadGenerationCount();
+  }, [currentUserPlan]);
 
   // Auto-save draft settings whenever they change
   useEffect(() => {
@@ -123,6 +167,11 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
       stylePreset: selectedStyle,
       enhancePrompt: useEnhancer
     });
+    
+    // Update generation count for Basic Premium users
+    if (currentUserPlan === 'basic') {
+      setGenerationCount(prev => prev + 1);
+    }
   };
 
   const handleSurpriseMe = () => {
@@ -380,6 +429,30 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
                 </div>
             </div>
         </div>
+
+        {/* Generation Count Display for Basic Premium Users */}
+        {currentUserPlan === 'basic' && (
+          <div className="px-6 mb-4">
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-2 h-2 rounded-full bg-amber-500 mr-2 animate-pulse"></div>
+                <span className="text-xs font-medium text-amber-400">Basic Premium Usage</span>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-bold text-white">
+                  {generationCount} <span className="text-amber-400">/</span> {generationLimit}
+                </div>
+                <div className="text-[10px] text-amber-500/80">images generated</div>
+              </div>
+            </div>
+            {generationCount >= generationLimit && (
+              <div className="mt-2 text-[10px] text-amber-500 flex items-center justify-center gap-1">
+                <Lock className="w-3 h-3" />
+                Upgrade to Pro for unlimited generations
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer / Generate Button */}
         <div className="p-6 bg-zinc-900/90 border-t border-white/5 backdrop-blur-md z-10 shrink-0">
