@@ -18,6 +18,7 @@ import { generateWallpaperImage } from './services/geminiService';
 import { useApiKey } from './hooks/useApiKey';
 import { paymentService } from './services/paymentService';
 import { userService } from './services/userService';
+import { indexedDBService } from './services/indexedDBService';
 import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -259,7 +260,7 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated]);
 
-  // Save wallpapers to localStorage whenever they change
+  // Save wallpapers to IndexedDB whenever they change
   useEffect(() => {
     console.log('Wallpapers changed, triggering save effect');
     console.log('isAuthenticated:', isAuthenticated);
@@ -269,63 +270,36 @@ const App: React.FC = () => {
       console.log('User ID from localStorage:', userId);
       
       if (userId) {
-        try {
-          // Check if we have wallpapers to save
-          if (wallpapers && wallpapers.length > 0) {
-            console.log('Attempting to save wallpapers to localStorage for user:', userId);
-            console.log('Number of wallpapers to save:', wallpapers.length);
-            
-            // Check the size of the data we're trying to save
-            const jsonData = JSON.stringify(wallpapers);
-            const dataSize = new Blob([jsonData]).size;
-            console.log('Wallpapers data size:', dataSize, 'bytes');
-            
-            // Check localStorage quota
-            try {
-              const testKey = `__storage_test_${Date.now()}`;
-              localStorage.setItem(testKey, 'test');
-              localStorage.removeItem(testKey);
-              console.log('localStorage is available and writable');
-            } catch (storageError) {
-              console.error('localStorage is not available or writable:', storageError);
-              return;
-            }
-            
-            // Try to save the data
-            localStorage.setItem(`pixelWalls_${userId}`, jsonData);
-            console.log('Wallpapers successfully saved to localStorage');
-          } else {
-            console.log('No wallpapers to save');
-          }
-        } catch (error) {
-          console.error('Failed to save wallpapers to localStorage:', error);
+        // Check if IndexedDB is supported
+        if (indexedDBService.isIndexedDBSupported()) {
+          console.log('IndexedDB is supported, saving wallpapers');
           
-          // Log more details about the error
-          if (error instanceof Error) {
-            if (error.name === 'QuotaExceededError') {
-              console.error('localStorage quota exceeded - data is too large to store');
-            } else {
-              console.error('Error name:', error.name);
-              console.error('Error message:', error.message);
-            }
-          }
+          // Save wallpapers to IndexedDB
+          indexedDBService.saveUserWallpapers(userId, wallpapers)
+            .then(() => {
+              console.log('Wallpapers successfully saved to IndexedDB');
+            })
+            .catch((error) => {
+              console.error('Failed to save wallpapers to IndexedDB:', error);
+              
+              // Fallback to localStorage if IndexedDB fails
+              try {
+                console.log('Falling back to localStorage');
+                localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(wallpapers));
+                console.log('Wallpapers saved to localStorage as fallback');
+              } catch (localStorageError) {
+                console.error('Failed to save wallpapers to localStorage fallback:', localStorageError);
+              }
+            });
+        } else {
+          console.log('IndexedDB not supported, falling back to localStorage');
           
-          // Try to save a simplified version
+          // Fallback to localStorage if IndexedDB is not supported
           try {
-            const simplifiedWallpapers = wallpapers.map(wallpaper => ({
-              id: wallpaper.id,
-              url: wallpaper.url.length > 1000 ? wallpaper.url.substring(0, 1000) + '...[truncated]' : wallpaper.url,
-              prompt: wallpaper.prompt,
-              resolution: wallpaper.resolution,
-              aspectRatio: wallpaper.aspectRatio,
-              createdAt: wallpaper.createdAt,
-              favorite: wallpaper.favorite
-            }));
-            
-            localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(simplifiedWallpapers));
-            console.log('Simplified wallpapers saved to localStorage');
-          } catch (simplifiedError) {
-            console.error('Failed to save even simplified wallpapers:', simplifiedError);
+            localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(wallpapers));
+            console.log('Wallpapers saved to localStorage');
+          } catch (error) {
+            console.error('Failed to save wallpapers to localStorage:', error);
           }
         }
       }
@@ -471,26 +445,44 @@ const App: React.FC = () => {
         // Load user-specific wallpapers
         try {
           console.log('Attempting to load wallpapers for user:', result.userId);
-          const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
-          if (savedWallpapers) {
-            console.log('Found saved wallpapers in localStorage');
-            try {
-              const parsedWallpapers = JSON.parse(savedWallpapers);
-              console.log('Parsed wallpapers:', parsedWallpapers);
-              console.log('Number of wallpapers loaded:', parsedWallpapers.length);
-              setWallpapers(parsedWallpapers);
-            } catch (e) {
-              console.error('Failed to parse saved wallpapers:', e);
-              // Fall back to initial wallpapers if parsing fails
+          
+          // Check if IndexedDB is supported
+          if (indexedDBService.isIndexedDBSupported()) {
+            console.log('IndexedDB is supported, loading wallpapers from IndexedDB');
+            const loadedWallpapers = await indexedDBService.loadUserWallpapers(result.userId);
+            if (loadedWallpapers && loadedWallpapers.length > 0) {
+              console.log('Found saved wallpapers in IndexedDB');
+              console.log('Number of wallpapers loaded:', loadedWallpapers.length);
+              setWallpapers(loadedWallpapers);
+            } else {
+              console.log('No saved wallpapers found in IndexedDB');
+              // If no saved wallpapers, use initial wallpapers
               setWallpapers(INITIAL_WALLPAPERS);
             }
           } else {
-            console.log('No saved wallpapers found in localStorage');
-            // If no saved wallpapers, use initial wallpapers
-            setWallpapers(INITIAL_WALLPAPERS);
+            console.log('IndexedDB not supported, falling back to localStorage');
+            // Fallback to localStorage if IndexedDB is not supported
+            const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
+            if (savedWallpapers) {
+              console.log('Found saved wallpapers in localStorage');
+              try {
+                const parsedWallpapers = JSON.parse(savedWallpapers);
+                console.log('Parsed wallpapers:', parsedWallpapers);
+                console.log('Number of wallpapers loaded:', parsedWallpapers.length);
+                setWallpapers(parsedWallpapers);
+              } catch (e) {
+                console.error('Failed to parse saved wallpapers:', e);
+                // Fall back to initial wallpapers if parsing fails
+                setWallpapers(INITIAL_WALLPAPERS);
+              }
+            } else {
+              console.log('No saved wallpapers found in localStorage');
+              // If no saved wallpapers, use initial wallpapers
+              setWallpapers(INITIAL_WALLPAPERS);
+            }
           }
         } catch (loadError) {
-          console.error('Error loading wallpapers from localStorage:', loadError);
+          console.error('Error loading wallpapers:', loadError);
           // Fall back to initial wallpapers if loading fails
           setWallpapers(INITIAL_WALLPAPERS);
         }
