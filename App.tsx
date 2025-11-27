@@ -19,7 +19,7 @@ import { useApiKey } from './hooks/useApiKey';
 import { paymentService } from './services/paymentService';
 import { userService } from './services/userService';
 import { indexedDBService } from './services/indexedDBService';
-import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown } from 'lucide-react';
+import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown, Filter } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Helper function to get backend URL
@@ -247,6 +247,7 @@ const App: React.FC = () => {
   const [showApiKeyInputDialog, setShowApiKeyInputDialog] = useState(false);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all'); // Add category filter state
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false); // Add category filter dropdown state
   
   const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue, requestApiKey } = useApiKey(geminiApiKey);
   
@@ -343,6 +344,27 @@ const App: React.FC = () => {
       }
     }
   }, [wallpapers, isAuthenticated]);
+  
+  // Close category filter when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showCategoryFilter && event.target instanceof Element) {
+        // Check if click is outside the filter dropdown
+        const filterButton = document.querySelector('[title="Filter by category"]');
+        const filterDropdown = document.querySelector('.absolute.right-0.top-12');
+        
+        if (filterButton && !filterButton.contains(event.target) && 
+            filterDropdown && !filterDropdown.contains(event.target)) {
+          setShowCategoryFilter(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCategoryFilter]);
   
   const fetchUserPlan = async (userId: string) => {
     try {
@@ -947,24 +969,62 @@ const App: React.FC = () => {
 
               {/* Category Filter */}
               {activeTab === 'gallery' && (
-                <div className="flex items-center space-x-2">
-                  <select 
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="bg-zinc-900/80 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+                    className={`flex items-center justify-center p-2 rounded-lg transition-all ${showCategoryFilter ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/10 hover:border-white/20'} backdrop-blur-sm`}
+                    title="Filter by category"
                   >
-                    <option value="all">All Categories</option>
-                    <option value="latest">Latest</option>
-                    <option value="trending">Trending</option>
-                    <option value="mountains">Mountains</option>
-                    <option value="beaches">Beaches</option>
-                    <option value="forest">Forest</option>
-                    <option value="city">City</option>
-                    <option value="space">Space</option>
-                    <option value="animals">Animals</option>
-                    <option value="abstract">Abstract</option>
-                    <option value="fantasy">Fantasy</option>
-                  </select>
+                    <Filter className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Category Filter Dropdown */}
+                  <AnimatePresence>
+                    {showCategoryFilter && (
+                      <>
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute right-0 top-12 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+                        >
+                          <div className="py-2">
+                            {[
+                              { value: 'all', label: 'All Categories' },
+                              { value: 'latest', label: 'Latest' },
+                              { value: 'trending', label: 'Trending' },
+                              { value: 'mountains', label: 'Mountains' },
+                              { value: 'beaches', label: 'Beaches' },
+                              { value: 'forest', label: 'Forest' },
+                              { value: 'city', label: 'City' },
+                              { value: 'space', label: 'Space' },
+                              { value: 'animals', label: 'Animals' },
+                              { value: 'abstract', label: 'Abstract' },
+                              { value: 'fantasy', label: 'Fantasy' }
+                            ].map((category) => (
+                              <button
+                                key={category.value}
+                                onClick={() => {
+                                  setSelectedCategory(category.value);
+                                  setShowCategoryFilter(false);
+                                }}
+                                className={`w-full text-left px-4 py-2 text-sm transition-colors ${selectedCategory === category.value ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-300 hover:bg-zinc-800/50 hover:text-white'}`}
+                              >
+                                {category.label}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                        
+                        {/* Click outside to close */}
+                        <div 
+                          className="fixed inset-0 z-40" 
+                          onClick={() => setShowCategoryFilter(false)}
+                        />
+                      </>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
 
