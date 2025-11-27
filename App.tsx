@@ -17,6 +17,7 @@ import { Wallpaper, ViewMode, GenerationParams } from './types';
 import { generateWallpaperImage } from './services/geminiService';
 import { useApiKey } from './hooks/useApiKey';
 import { paymentService } from './services/paymentService';
+import { userService } from './services/userService';
 import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -392,38 +393,41 @@ const App: React.FC = () => {
     setShowApiKeyInputDialog(false);
   };
   
-  const handleLogin = (username: string, password: string) => {
-    // Validate credentials
+  const handleLogin = async (username: string, password: string) => {
+    // Validate credentials using the userService
     console.log('Login attempt:', { username, password });
     
-    // Check if username is 'abc' (case insensitive) and password is '123'
-    if (username.toLowerCase() === 'abc' && password === '123') {
-      setIsAuthenticated(true);
-      setUsername(username); // Set username
-      // Save username to localStorage
-      localStorage.setItem('username', username);
-      // Set a fixed userId for database operations
-      const userId = 'user_abc_123';
-      localStorage.setItem('userId', userId);
-      // Load user-specific wallpapers
-      const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
-      if (savedWallpapers) {
-        try {
-          const parsedWallpapers = JSON.parse(savedWallpapers);
-          setWallpapers(parsedWallpapers);
-        } catch (e) {
-          console.error('Failed to parse saved wallpapers:', e);
-          // Fall back to initial wallpapers if parsing fails
+    try {
+      const result = await userService.loginUser({ username, password });
+      if (result.success && result.userId) {
+        setIsAuthenticated(true);
+        setUsername(username); // Set username
+        // Save username and userId to localStorage
+        localStorage.setItem('username', username);
+        localStorage.setItem('userId', result.userId);
+        // Load user-specific wallpapers
+        const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
+        if (savedWallpapers) {
+          try {
+            const parsedWallpapers = JSON.parse(savedWallpapers);
+            setWallpapers(parsedWallpapers);
+          } catch (e) {
+            console.error('Failed to parse saved wallpapers:', e);
+            // Fall back to initial wallpapers if parsing fails
+            setWallpapers(INITIAL_WALLPAPERS);
+          }
+        } else {
+          // If no saved wallpapers, use initial wallpapers
           setWallpapers(INITIAL_WALLPAPERS);
         }
+        // Don't set API key here - it will be set when needed
       } else {
-        // If no saved wallpapers, use initial wallpapers
-        setWallpapers(INITIAL_WALLPAPERS);
+        // Show error message
+        alert(result.error || 'Login failed');
       }
-      // Don't set API key here - it will be set when needed
-    } else {
-      // In a real app, you would show an error message
-      alert('Invalid credentials. Please use username "abc" and password "123".');
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Login failed. Please try again.');
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Sparkles, Loader2, ArrowRight } from 'lucide-react';
+import { User, Lock, Sparkles, Loader2, ArrowRight, Plus } from 'lucide-react';
+import { userService } from '../services/userService';
 
 interface LoginPageProps {
   onLogin: (username: string, password: string) => void;
@@ -10,16 +11,55 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [showRegistration, setShowRegistration] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    if (showRegistration) {
+      // Handle registration
+      try {
+        const result = await userService.registerUser({ username, password });
+        if (result.success) {
+          setRegistrationSuccess(true);
+          // After successful registration, automatically switch to login mode
+          setTimeout(() => {
+            setShowRegistration(false);
+            setRegistrationSuccess(false);
+          }, 2000);
+        } else {
+          alert(result.error || 'Registration failed');
+        }
+      } catch (error) {
+        console.error('Registration error:', error);
+        alert('Registration failed. Please try again.');
+      }
+    } else {
+      // Handle login
+      try {
+        const result = await userService.loginUser({ username, password });
+        if (result.success) {
+          onLogin(username, password);
+        } else {
+          alert(result.error || 'Login failed');
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        alert('Login failed. Please try again.');
+      }
+    }
     
-    onLogin(username, password);
     setIsLoading(false);
+  };
+
+  const toggleRegistration = () => {
+    setShowRegistration(!showRegistration);
+    setRegistrationSuccess(false);
+    setUsername('');
+    setPassword('');
   };
 
   return (
@@ -67,13 +107,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">PixelWalls</h1>
           <p className="text-zinc-400 text-sm">AI-Powered Wallpaper Generator</p>
+          
+          {/* Registration Success Message */}
+          {registrationSuccess && (
+            <motion.div 
+              className="mt-4 p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              Registration successful! You can now log in.
+            </motion.div>
+          )}
         </div>
         
         <form onSubmit={handleSubmit}>
           {/* Username Field */}
           <div className="mb-6">
             <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
-              Username
+              {showRegistration ? 'New Username' : 'Username'}
             </label>
             <div className="relative flex items-center bg-zinc-900/80 border border-white/10 rounded-xl px-4 py-3 focus-within:border-white/30 transition-colors hover:border-white/20">
               <User className="w-5 h-5 text-zinc-500 mr-3" />
@@ -81,9 +132,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder={showRegistration ? 'Choose a username' : 'Enter your username'}
                 className="w-full bg-transparent text-white placeholder-zinc-500 focus:outline-none"
                 disabled={isLoading}
+                required
               />
             </div>
           </div>
@@ -91,7 +143,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           {/* Password Field */}
           <div className="mb-8">
             <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
-              Password
+              {showRegistration ? 'New Password' : 'Password'}
             </label>
             <div className="relative flex items-center bg-zinc-900/80 border border-white/10 rounded-xl px-4 py-3 focus-within:border-white/30 transition-colors hover:border-white/20">
               <Lock className="w-5 h-5 text-zinc-500 mr-3" />
@@ -99,9 +151,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={showRegistration ? 'Choose a password' : 'Enter your password'}
                 className="w-full bg-transparent text-white placeholder-zinc-500 focus:outline-none"
                 disabled={isLoading}
+                required
               />
             </div>
           </div>
@@ -117,20 +170,32 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                <span>Entering Workspace...</span>
+                <span>{showRegistration ? 'Creating Account...' : 'Entering Workspace...'}</span>
               </>
             ) : (
               <>
-                <span>Enter Workspace</span>
+                <span>{showRegistration ? 'Create Account' : 'Enter Workspace'}</span>
                 <ArrowRight className="w-5 h-5 ml-2" />
               </>
             )}
           </motion.button>
         </form>
         
+        {/* Toggle between Login and Registration */}
+        <div className="mt-6 text-center">
+          <button 
+            onClick={toggleRegistration}
+            className="text-sm text-zinc-400 hover:text-white transition-colors flex items-center justify-center mx-auto"
+            disabled={isLoading}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            {showRegistration ? 'Already have an account? Login' : 'Create new account'}
+          </button>
+        </div>
+        
         {/* Demo Credentials */}
         <div className="mt-6 text-center text-xs text-zinc-500">
-          <p>Enter username: <span className="font-mono bg-zinc-800 px-1.5 py-0.5 rounded">abc</span> (case insensitive) and password: <span className="font-mono bg-zinc-800 px-1.5 py-0.5 rounded">123</span></p>
+          <p>For demo: username: <span className="font-mono bg-zinc-800 px-1.5 py-0.5 rounded">abc</span> (case insensitive) and password: <span className="font-mono bg-zinc-800 px-1.5 py-0.5 rounded">123</span></p>
           <p className="mt-2">By signing in, you agree to our Terms of Service and Privacy Policy.</p>
         </div>
       </motion.div>
