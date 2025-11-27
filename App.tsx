@@ -967,67 +967,6 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Category Filter */}
-              {activeTab === 'gallery' && (
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowCategoryFilter(!showCategoryFilter)}
-                    className={`flex items-center justify-center p-2 rounded-lg transition-all ${showCategoryFilter ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/10 hover:border-white/20'} backdrop-blur-sm`}
-                    title="Filter by category"
-                  >
-                    <Filter className="w-5 h-5" />
-                  </button>
-                  
-                  {/* Category Filter Dropdown */}
-                  <AnimatePresence>
-                    {showCategoryFilter && (
-                      <>
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute right-0 top-12 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
-                        >
-                          <div className="py-2">
-                            {[
-                              { value: 'all', label: 'All Categories' },
-                              { value: 'latest', label: 'Latest' },
-                              { value: 'trending', label: 'Trending' },
-                              { value: 'mountains', label: 'Mountains' },
-                              { value: 'beaches', label: 'Beaches' },
-                              { value: 'forest', label: 'Forest' },
-                              { value: 'city', label: 'City' },
-                              { value: 'space', label: 'Space' },
-                              { value: 'animals', label: 'Animals' },
-                              { value: 'abstract', label: 'Abstract' },
-                              { value: 'fantasy', label: 'Fantasy' }
-                            ].map((category) => (
-                              <button
-                                key={category.value}
-                                onClick={() => {
-                                  setSelectedCategory(category.value);
-                                  setShowCategoryFilter(false);
-                                }}
-                                className={`w-full text-left px-4 py-2 text-sm transition-colors ${selectedCategory === category.value ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-300 hover:bg-zinc-800/50 hover:text-white'}`}
-                              >
-                                {category.label}
-                              </button>
-                            ))}
-                          </div>
-                        </motion.div>
-                        
-                        {/* Click outside to close */}
-                        <div 
-                          className="fixed inset-0 z-40" 
-                          onClick={() => setShowCategoryFilter(false)}
-                        />
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
-
               <div className="flex items-center space-x-2">
                 <div className="flex items-center bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-sm relative">
                   {/* Sliding Tab Background */}
@@ -1066,6 +1005,67 @@ const App: React.FC = () => {
                     </svg>
                     <span className="text-sm font-medium hidden md:inline">Payments</span>
                   </button>
+                  
+                  {/* Category Filter */}
+                  {activeTab === 'gallery' && (
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+                        className={`flex items-center justify-center p-2 rounded-lg transition-all ${showCategoryFilter ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/10 hover:border-white/20'} backdrop-blur-sm`}
+                        title="Filter by category"
+                      >
+                        <Filter className="w-5 h-5" />
+                      </button>
+                      
+                      {/* Category Filter Dropdown */}
+                      <AnimatePresence>
+                        {showCategoryFilter && (
+                          <>
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                              transition={{ duration: 0.2 }}
+                              className="absolute right-0 top-12 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+                            >
+                              <div className="py-2">
+                                {[
+                                  { value: 'all', label: 'All Categories' },
+                                  { value: 'latest', label: 'Latest' },
+                                  { value: 'trending', label: 'Trending' },
+                                  { value: 'mountains', label: 'Mountains' },
+                                  { value: 'beaches', label: 'Beaches' },
+                                  { value: 'forest', label: 'Forest' },
+                                  { value: 'city', label: 'City' },
+                                  { value: 'space', label: 'Space' },
+                                  { value: 'animals', label: 'Animals' },
+                                  { value: 'abstract', label: 'Abstract' },
+                                  { value: 'fantasy', label: 'Fantasy' }
+                                ].map((category) => (
+                                  <button
+                                    key={category.value}
+                                    onClick={() => {
+                                      setSelectedCategory(category.value);
+                                      setShowCategoryFilter(false);
+                                    }}
+                                    className={`w-full text-left px-4 py-2 text-sm transition-colors ${selectedCategory === category.value ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-300 hover:bg-zinc-800/50 hover:text-white'}`}
+                                  >
+                                    {category.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </motion.div>
+                            
+                            {/* Click outside to close */}
+                            <div 
+                              className="fixed inset-0 z-40" 
+                              onClick={() => setShowCategoryFilter(false)}
+                            />
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
                 </div>
                 
                 <button 
