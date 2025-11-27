@@ -140,7 +140,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
       {/* Modal Content */}
       <motion.div 
         variants={modalVariants}
-        className="relative w-full max-w-7xl h-[85vh] md:h-[90vh] bg-zinc-900 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row border border-white/10 ring-1 ring-white/5 z-10"
+        className="relative w-full max-w-7xl h-[90vh] md:h-[90vh] bg-zinc-900 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row border border-white/10 ring-1 ring-white/5 z-10"
         onClick={(e) => e.stopPropagation()}
       >
         
