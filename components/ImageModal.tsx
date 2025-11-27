@@ -125,7 +125,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
 
   return (
     <motion.div 
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 overflow-y-auto"
         initial="hidden"
         animate="visible"
         exit="exit"
@@ -140,7 +140,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
       {/* Modal Content */}
       <motion.div 
         variants={modalVariants}
-        className="relative w-full max-w-7xl h-[90vh] md:h-[90vh] bg-zinc-900 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row border border-white/10 ring-1 ring-white/5 z-10"
+        className="relative w-full max-w-7xl h-[90vh] md:h-[90vh] bg-zinc-900 rounded-[2rem] md:rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row border border-white/10 ring-1 ring-white/5 z-10 max-h-[95vh] md:max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         
@@ -154,7 +154,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
         </motion.button>
 
         {/* Image Area */}
-        <div className="flex-1 bg-zinc-950 flex items-center justify-center relative overflow-hidden group">
+        <div className="flex-1 bg-zinc-950 flex items-center justify-center relative overflow-hidden group md:min-h-0 min-h-[40vh]">
              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-800/30 to-zinc-950 opacity-50"></div>
              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none mix-blend-overlay"></div>
              
@@ -170,7 +170,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
         </div>
 
         {/* Sidebar / Info Area */}
-        <div className="w-full md:w-[400px] bg-zinc-900 border-l border-white/5 flex flex-col h-auto md:h-full z-20 shadow-xl">
+        <div className="w-full md:w-[400px] bg-zinc-900 border-l border-white/5 flex flex-col h-auto md:h-full z-20 shadow-xl md:max-h-none max-h-[50vh]">
            <div className="flex items-center justify-between p-6 border-b border-white/5">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-lg shadow-purple-900/20">
@@ -227,7 +227,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
               </div>
            </div>
 
-           <div className="p-6 border-t border-white/5 bg-zinc-900 relative z-30">
+           <div className="p-6 border-t border-white/5 bg-zinc-900 relative z-30 flex-shrink-0">
               
               {/* Quality Selector */}
               <div className="mb-4">
