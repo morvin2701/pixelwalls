@@ -328,7 +328,7 @@ const App: React.FC = () => {
       // Transform the data to match what the PaymentHistory component expects
       const transformedData = data.map((payment: any) => ({
         id: payment.id || payment.razorpay_payment_id || `payment-${Date.now()}`,
-        planName: payment.planName || payment.planId || 'Unknown Plan',
+        planName: payment.plan_name || payment.planName || payment.planId || (payment.amount === 100000 ? 'Pro Premium' : payment.amount === 30000 ? 'Basic Premium' : 'Unknown Plan'),
         amount: payment.amount || 0,
         currency: payment.currency || 'INR',
         status: payment.status || 'Pending',
