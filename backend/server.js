@@ -1041,8 +1041,8 @@ app.get('/', (req, res) => {
       'POST /login': 'Login a user',
       'GET /test-db': 'Test database connection',
       'GET /health': 'Health check endpoint',
-      'GET /user-generation-limit/:userId': 'Check user\'s generation limit',
-      'POST /increment-generation-count/:userId': 'Increment user\'s generation count',
+      'GET /user-generation-limit/:userId': 'Check user generation limit',
+      'POST /increment-generation-count/:userId': 'Increment user generation count',
       'GET /': 'This welcome message'
     },
     timestamp: new Date().toISOString()

@@ -51,7 +51,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '2K',
     aspectRatio: '1:1',
     createdAt: Date.now(),
-    favorite: false
+    favorite: false,
+    category: 'animals'
   },
   {
     id: 'init-2',
@@ -60,7 +61,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '9:16',
     createdAt: Date.now() - 10000,
-    favorite: true
+    favorite: true,
+    category: 'abstract'
   },
   {
     id: 'init-3',
@@ -69,7 +71,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '9:16',
     createdAt: Date.now() - 20000,
-    favorite: false
+    favorite: false,
+    category: 'abstract'
   },
   {
     id: 'init-4',
@@ -78,7 +81,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '16:9',
     createdAt: Date.now() - 30000,
-    favorite: false
+    favorite: false,
+    category: 'abstract'
   },
   {
     id: 'init-5',
@@ -87,7 +91,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '16:9',
     createdAt: Date.now() - 40000,
-    favorite: false
+    favorite: false,
+    category: 'mountains'
   },
   // Example of how to add local images from the assets folder:
   {
@@ -97,7 +102,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '9:16', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: false // or true
+    favorite: false, // or true
+    category: 'beaches'
   },
 
   {
@@ -107,7 +113,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '9:16', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: true // or true
+    favorite: true, // or true
+    category: 'beaches'
   },
 
   {
@@ -117,7 +124,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '16:9', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: false // or true
+    favorite: false, // or true
+    category: 'forest'
   },
 
   {
@@ -127,7 +135,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '9:16', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: false // or true
+    favorite: false, // or true
+    category: 'forest'
   },
 
   {
@@ -137,7 +146,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '9:16', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: false // or true
+    favorite: false, // or true
+    category: 'forest'
   },
 
   {
@@ -147,7 +157,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '16:9', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: false // or true
+    favorite: false, // or true
+    category: 'fantasy'
   },
 
   {
@@ -157,7 +168,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '16:9', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: false // or true
+    favorite: false, // or true
+    category: 'fantasy'
   },
 
   {
@@ -167,7 +179,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '16:9', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: false // or true
+    favorite: false, // or true
+    category: 'city'
   },
 
   {
@@ -177,7 +190,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '16:9', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: false // or true
+    favorite: false, // or true
+    category: 'city'
   },
 
   {
@@ -187,7 +201,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '16:9', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: true // or true
+    favorite: true, // or true
+    category: 'city'
   },
 
   {
@@ -197,7 +212,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '9:16', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: true // or true
+    favorite: true, // or true
+    category: 'forest'
   },
 
   {
@@ -207,7 +223,8 @@ const INITIAL_WALLPAPERS: Wallpaper[] = [
     resolution: '4K',
     aspectRatio: '16:9', // or '9:16' or '1:1'
     createdAt: Date.now(),
-    favorite: true // or true
+    favorite: true, // or true
+    category: 'fantasy'
   },
 
 
@@ -229,6 +246,7 @@ const App: React.FC = () => {
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [showApiKeyInputDialog, setShowApiKeyInputDialog] = useState(false);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all'); // Add category filter state
   
   const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue, requestApiKey } = useApiKey(geminiApiKey);
   
@@ -585,6 +603,7 @@ const App: React.FC = () => {
         aspectRatio: params.aspectRatio,
         createdAt: Date.now(),
         favorite: false,
+        category: determineCategory(enhancedPrompt)
       };
 
       // Artificial delay to let the skeleton animation play a bit longer for better feel
@@ -626,6 +645,34 @@ const App: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  // Function to determine category based on prompt content
+  const determineCategory = (prompt: string): string => {
+    const lowerPrompt = prompt.toLowerCase();
+    
+    // Define category keywords
+    const categories: Record<string, string[]> = {
+      'mountains': ['mountain', 'mountains', 'peak', 'peaks', 'summit', 'alps', 'rocky', 'himalayas', 'ridge'],
+      'beaches': ['beach', 'beaches', 'ocean', 'sea', 'shore', 'coast', 'sand', 'waves', 'tropical'],
+      'forest': ['forest', 'woods', 'trees', 'jungle', 'woodland', 'rainforest', 'grove'],
+      'city': ['city', 'urban', 'metropolis', 'skyscraper', 'downtown', 'street', 'architecture'],
+      'space': ['space', 'cosmos', 'galaxy', 'universe', 'stars', 'planets', 'astronaut', 'nebula'],
+      'animals': ['animal', 'animals', 'wildlife', 'creature', 'mammal', 'bird', 'fish', 'insect'],
+      'abstract': ['abstract', 'geometric', 'shapes', 'pattern', 'digital', 'minimal'],
+      'fantasy': ['fantasy', 'magic', 'mythical', 'dragon', 'wizard', 'castle', 'medieval'],
+      'trending': ['trending', 'popular', 'viral', 'modern', 'contemporary', 'latest']
+    };
+    
+    // Check for matches
+    for (const [category, keywords] of Object.entries(categories)) {
+      if (keywords.some(keyword => lowerPrompt.includes(keyword))) {
+        return category;
+      }
+    }
+    
+    // Default to 'latest' if no specific category is found
+    return 'latest';
   };
 
   const toggleFavorite = useCallback((id: string) => {
@@ -762,7 +809,9 @@ const App: React.FC = () => {
 
   const displayedWallpapers = activeTab === 'favorites' 
     ? wallpapers.filter(w => w.favorite) 
-    : wallpapers;
+    : selectedCategory === 'all' 
+      ? wallpapers 
+      : wallpapers.filter(w => w.category === selectedCategory);
 
   return (
     <>
@@ -895,6 +944,29 @@ const App: React.FC = () => {
                   </AnimatePresence>
                 </div>
               </div>
+
+              {/* Category Filter */}
+              {activeTab === 'gallery' && (
+                <div className="flex items-center space-x-2">
+                  <select 
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="bg-zinc-900/80 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="latest">Latest</option>
+                    <option value="trending">Trending</option>
+                    <option value="mountains">Mountains</option>
+                    <option value="beaches">Beaches</option>
+                    <option value="forest">Forest</option>
+                    <option value="city">City</option>
+                    <option value="space">Space</option>
+                    <option value="animals">Animals</option>
+                    <option value="abstract">Abstract</option>
+                    <option value="fantasy">Fantasy</option>
+                  </select>
+                </div>
+              )}
 
               <div className="flex items-center space-x-2">
                 <div className="flex items-center bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-sm relative">

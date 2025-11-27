@@ -11,6 +11,7 @@ export interface Wallpaper {
   aspectRatio: '16:9' | '9:16' | '1:1';
   createdAt: number;
   favorite?: boolean;
+  category?: string;
 }
 
 export interface GenerationParams {
