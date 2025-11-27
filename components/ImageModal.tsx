@@ -58,12 +58,23 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
         const response = await fetch(wallpaper.url);
         const blob = await response.blob();
 
+        // Get the user's downloaded wallpapers count from localStorage
+        const userId = localStorage.getItem('userId');
+        const downloadCountKey = userId ? `pixelWallsDownloadCount_${userId}` : 'pixelWallsDownloadCount';
+        let downloadCount = parseInt(localStorage.getItem(downloadCountKey) || '0', 10);
+        downloadCount++;
+        localStorage.setItem(downloadCountKey, downloadCount.toString());
+
+        // Format the download count with leading zeros (001, 002, etc.)
+        const formattedCount = downloadCount.toString().padStart(3, '0');
+        const filename = `PixelWalls_${formattedCount}`;
+
         if (downloadQuality === 'High') {
             // Direct download (Original PNG)
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `pixel-wall-${wallpaper.id}.png`;
+            a.download = `${filename}.png`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -95,7 +106,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                         const downloadUrl = window.URL.createObjectURL(jpegBlob);
                         const a = document.createElement('a');
                         a.href = downloadUrl;
-                        a.download = `pixel-wall-${wallpaper.id}-medium.jpg`;
+                        a.download = `${filename}-medium.jpg`;
                         document.body.appendChild(a);
                         a.click();
                         window.URL.revokeObjectURL(downloadUrl);
