@@ -264,7 +264,11 @@ const App: React.FC = () => {
     if (isAuthenticated) {
       const userId = localStorage.getItem('userId');
       if (userId) {
-        localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(wallpapers));
+        try {
+          localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(wallpapers));
+        } catch (error) {
+          console.error('Failed to save wallpapers to localStorage:', error);
+        }
       }
     }
   }, [wallpapers, isAuthenticated]);

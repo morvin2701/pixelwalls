@@ -77,13 +77,29 @@ async function initializeDatabase() {
     console.log('Attempting to connect to SQL Server...');
     console.log('SQL Server configuration:', JSON.stringify(sqlConfig, null, 2));
     
-    dbPool = await sql.connect(sqlConfig);
-    console.log('Connected to SQL Server successfully');
+    // Add connection retry logic
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        dbPool = await sql.connect(sqlConfig);
+        console.log('Connected to SQL Server successfully');
+        
+        // Test the connection by running a simple query
+        const result = await dbPool.request().query('SELECT 1 as test');
+        console.log('Database connection test successful:', result.recordset);
+        return true;
+      } catch (connectError) {
+        retries--;
+        console.error(`Database connection attempt failed (${3-retries}/3):`, connectError.message);
+        if (retries > 0) {
+          console.log(`Retrying in 2 seconds... (${retries} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+    }
     
-    // Test the connection by running a simple query
-    const result = await dbPool.request().query('SELECT 1 as test');
-    console.log('Database connection test successful:', result.recordset);
-    return true;
+    console.error('Failed to connect to SQL Server after 3 attempts');
+    return false;
   } catch (error) {
     console.error('Failed to connect to SQL Server:');
     console.error('Error name:', error.name);
@@ -192,26 +208,39 @@ app.post('/create-order', async (req, res) => {
       try {
         console.log('=== SAVING TO DATABASE ===');
         
-        // Ensure user exists
+        // Ensure user exists - IMPROVED VERSION
         try {
+          console.log('Checking if user exists:', userId);
           const userCheck = await dbPool.request()
             .input('user_id', sql.NVarChar, userId)
-            .query('SELECT id FROM users WHERE id = @user_id');
+            .query('SELECT id, username FROM users WHERE id = @user_id');
+          
+          console.log('User check result:', userCheck.recordset);
           
           if (userCheck.recordset.length === 0) {
-            await dbPool.request()
+            console.log('User does not exist, creating new user:', userId);
+            const createUserResult = await dbPool.request()
               .input('id', sql.NVarChar, userId)
               .input('username', sql.NVarChar, userId)
               .input('created_at', sql.DateTime2, new Date())
               .query('INSERT INTO users (id, username, created_at) VALUES (@id, @username, @created_at)');
-            console.log('User created in database');
+            console.log('User created in database. Rows affected:', createUserResult.rowsAffected);
+          } else {
+            console.log('User already exists in database');
           }
         } catch (userError) {
           console.error('Error checking/creating user:', userError);
+          console.error('Database error details:', {
+            message: userError.message,
+            code: userError.code,
+            originalError: userError.originalError
+          });
+          // Continue with payment history insertion even if user creation fails
         }
         
-        // Insert payment history
-        const insertResult = await dbPool.request()
+        // Insert payment history - IMPROVED VERSION WITH BETTER ERROR HANDLING
+        console.log('Inserting payment history for user:', userId);
+        const insertRequest = dbPool.request()
           .input('id', sql.NVarChar, order.id)
           .input('user_id', sql.NVarChar, userId)
           .input('plan_id', sql.NVarChar, plan.id)
@@ -220,17 +249,23 @@ app.post('/create-order', async (req, res) => {
           .input('currency', sql.NVarChar, plan.currency)
           .input('status', sql.NVarChar, 'Pending')
           .input('razorpay_order_id', sql.NVarChar, order.id)
-          .input('created_at', sql.DateTime2, new Date())
-          .query(`
-            INSERT INTO payment_history 
-            (id, user_id, plan_id, plan_name, amount, currency, status, razorpay_order_id, created_at)
-            VALUES 
-            (@id, @user_id, @plan_id, @plan_name, @amount, @currency, @status, @razorpay_order_id, @created_at)
-          `);
+          .input('created_at', sql.DateTime2, new Date());
+        
+        const insertResult = await insertRequest.query(`
+          INSERT INTO payment_history 
+          (id, user_id, plan_id, plan_name, amount, currency, status, razorpay_order_id, created_at)
+          VALUES 
+          (@id, @user_id, @plan_id, @plan_name, @amount, @currency, @status, @razorpay_order_id, @created_at)
+        `);
         
         console.log('Payment history saved to database. Rows affected:', insertResult.rowsAffected);
       } catch (dbError) {
         console.error('CRITICAL ERROR: Failed to save payment history to database:', dbError);
+        console.error('Database error details:', {
+          message: dbError.message,
+          code: dbError.code,
+          originalError: dbError.originalError
+        });
         // We'll still return success to the frontend but log the database error
       }
     } else {
@@ -339,6 +374,7 @@ app.post('/verify-payment', async (req, res) => {
     // Update payment status to Received
     if (dbPool) {
       try {
+        console.log('Updating payment status to Received in database...');
         const request = dbPool.request();
         request.input('status', sql.NVarChar, 'Received');
         request.input('verified_at', sql.DateTime2, new Date());
@@ -353,8 +389,18 @@ app.post('/verify-payment', async (req, res) => {
           WHERE id = @id
         `);
         console.log('Payment status updated to Received. Rows affected:', result.rowsAffected);
+        
+        // Log if no rows were affected
+        if (result.rowsAffected[0] === 0) {
+          console.warn('Warning: No rows were updated. Payment history entry may not exist for order ID:', razorpay_order_id);
+        }
       } catch (dbError) {
         console.error('Error updating payment status:', dbError);
+        console.error('Database error details:', {
+          message: dbError.message,
+          code: dbError.code,
+          originalError: dbError.originalError
+        });
       }
     }
     
@@ -423,6 +469,11 @@ app.post('/payment-failed', async (req, res) => {
         `);
         
         console.log('Payment history updated with rejected status for failed payment. Rows affected:', result.rowsAffected);
+        
+        // Log if no rows were affected
+        if (result.rowsAffected[0] === 0) {
+          console.warn('Warning: No rows were updated. Payment history entry may not exist for order ID:', razorpay_order_id);
+        }
       } catch (dbError) {
         console.error('Error updating payment history in database:', dbError);
         console.error('Database error details:', {
@@ -472,7 +523,10 @@ app.get('/user-payment-history/:userId', async (req, res) => {
         
         console.log('Payment history fetched from database. Rows returned:', result.recordset.length);
         console.log('Payment history data:', result.recordset);
-        res.json(result.recordset);
+        
+        // Ensure we always return an array
+        const paymentHistory = Array.isArray(result.recordset) ? result.recordset : [];
+        res.json(paymentHistory);
       } catch (dbError) {
         console.error('Error fetching payment history from database:', dbError);
         console.error('Database error details:', {
@@ -480,16 +534,16 @@ app.get('/user-payment-history/:userId', async (req, res) => {
           code: dbError.code,
           originalError: dbError.originalError
         });
-        // Return empty array instead of error to prevent frontend crashes
+        // Return empty array on database error to prevent frontend crashes
         res.json([]);
       }
     } else {
-      console.log('Database pool is not available, returning empty array');
+      console.log('Database not connected, returning empty payment history');
       res.json([]);
     }
   } catch (error) {
     console.error('Error fetching user payment history:', error);
-    // Return empty array instead of error to prevent frontend crashes
+    // Return empty array on general error to prevent frontend crashes
     res.json([]);
   }
 });
