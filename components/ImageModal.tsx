@@ -189,15 +189,17 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
               </motion.button>
            </div>
 
-           <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-              <div className="space-y-8">
+           <div className="p-4 md:p-6 flex-1 overflow-y-auto custom-scrollbar">
+              <div className="space-y-6 md:space-y-8">
                  <div className="relative group">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-3 flex items-center gap-2">
                         Prompt
                     </label>
-                    <div className="p-4 rounded-2xl bg-zinc-950/50 border border-white/5 text-zinc-300 text-sm leading-relaxed italic relative overflow-hidden">
+                    <div className="p-4 rounded-2xl bg-zinc-950/50 border border-white/5 text-zinc-300 text-sm leading-relaxed italic relative min-h-[80px]">
                         <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-500"></div>
-                        "{wallpaper.prompt}"
+                        <div className="pl-3 break-words whitespace-pre-wrap">
+                            "{wallpaper.prompt}"
+                        </div>
                     </div>
                  </div>
 
