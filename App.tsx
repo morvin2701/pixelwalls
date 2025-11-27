@@ -261,13 +261,72 @@ const App: React.FC = () => {
 
   // Save wallpapers to localStorage whenever they change
   useEffect(() => {
+    console.log('Wallpapers changed, triggering save effect');
+    console.log('isAuthenticated:', isAuthenticated);
+    
     if (isAuthenticated) {
       const userId = localStorage.getItem('userId');
+      console.log('User ID from localStorage:', userId);
+      
       if (userId) {
         try {
-          localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(wallpapers));
+          // Check if we have wallpapers to save
+          if (wallpapers && wallpapers.length > 0) {
+            console.log('Attempting to save wallpapers to localStorage for user:', userId);
+            console.log('Number of wallpapers to save:', wallpapers.length);
+            
+            // Check the size of the data we're trying to save
+            const jsonData = JSON.stringify(wallpapers);
+            const dataSize = new Blob([jsonData]).size;
+            console.log('Wallpapers data size:', dataSize, 'bytes');
+            
+            // Check localStorage quota
+            try {
+              const testKey = `__storage_test_${Date.now()}`;
+              localStorage.setItem(testKey, 'test');
+              localStorage.removeItem(testKey);
+              console.log('localStorage is available and writable');
+            } catch (storageError) {
+              console.error('localStorage is not available or writable:', storageError);
+              return;
+            }
+            
+            // Try to save the data
+            localStorage.setItem(`pixelWalls_${userId}`, jsonData);
+            console.log('Wallpapers successfully saved to localStorage');
+          } else {
+            console.log('No wallpapers to save');
+          }
         } catch (error) {
           console.error('Failed to save wallpapers to localStorage:', error);
+          
+          // Log more details about the error
+          if (error instanceof Error) {
+            if (error.name === 'QuotaExceededError') {
+              console.error('localStorage quota exceeded - data is too large to store');
+            } else {
+              console.error('Error name:', error.name);
+              console.error('Error message:', error.message);
+            }
+          }
+          
+          // Try to save a simplified version
+          try {
+            const simplifiedWallpapers = wallpapers.map(wallpaper => ({
+              id: wallpaper.id,
+              url: wallpaper.url.length > 1000 ? wallpaper.url.substring(0, 1000) + '...[truncated]' : wallpaper.url,
+              prompt: wallpaper.prompt,
+              resolution: wallpaper.resolution,
+              aspectRatio: wallpaper.aspectRatio,
+              createdAt: wallpaper.createdAt,
+              favorite: wallpaper.favorite
+            }));
+            
+            localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(simplifiedWallpapers));
+            console.log('Simplified wallpapers saved to localStorage');
+          } catch (simplifiedError) {
+            console.error('Failed to save even simplified wallpapers:', simplifiedError);
+          }
         }
       }
     }
@@ -410,18 +469,29 @@ const App: React.FC = () => {
         localStorage.setItem('username', username);
         localStorage.setItem('userId', result.userId);
         // Load user-specific wallpapers
-        const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
-        if (savedWallpapers) {
-          try {
-            const parsedWallpapers = JSON.parse(savedWallpapers);
-            setWallpapers(parsedWallpapers);
-          } catch (e) {
-            console.error('Failed to parse saved wallpapers:', e);
-            // Fall back to initial wallpapers if parsing fails
+        try {
+          console.log('Attempting to load wallpapers for user:', result.userId);
+          const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
+          if (savedWallpapers) {
+            console.log('Found saved wallpapers in localStorage');
+            try {
+              const parsedWallpapers = JSON.parse(savedWallpapers);
+              console.log('Parsed wallpapers:', parsedWallpapers);
+              console.log('Number of wallpapers loaded:', parsedWallpapers.length);
+              setWallpapers(parsedWallpapers);
+            } catch (e) {
+              console.error('Failed to parse saved wallpapers:', e);
+              // Fall back to initial wallpapers if parsing fails
+              setWallpapers(INITIAL_WALLPAPERS);
+            }
+          } else {
+            console.log('No saved wallpapers found in localStorage');
+            // If no saved wallpapers, use initial wallpapers
             setWallpapers(INITIAL_WALLPAPERS);
           }
-        } else {
-          // If no saved wallpapers, use initial wallpapers
+        } catch (loadError) {
+          console.error('Error loading wallpapers from localStorage:', loadError);
+          // Fall back to initial wallpapers if loading fails
           setWallpapers(INITIAL_WALLPAPERS);
         }
         // Don't set API key here - it will be set when needed
@@ -436,6 +506,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    console.log('User logging out');
     // Clear authentication state
     setIsAuthenticated(false);
     setUsername('');
@@ -448,7 +519,9 @@ const App: React.FC = () => {
     setCurrentUserPlan('base');
     setIsPremium(false);
     // Clear wallpapers from state but keep them in localStorage for when user logs back in
+    console.log('Clearing wallpapers from state but keeping in localStorage');
     setWallpapers(INITIAL_WALLPAPERS);
+    console.log('Logout completed');
   };
 
   const handleGenerate = async (params: GenerationParams) => {
