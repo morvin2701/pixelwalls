@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Test</title>
+</head>
+<body>
+    <h1>Supabase Integration Test</h1>
+    <div id="results"></div>
+    
+    <script type="module">
+        import { supabase } from './services/supabaseClient.js';
+        
+        const resultsDiv = document.getElementById('results');
+        
+        function log(message) {
+            const p = document.createElement('p');
+            p.textContent = message;
+            resultsDiv.appendChild(p);
+            console.log(message);
+        }
+        
+        async function testSupabase() {
+            log('Testing Supabase integration...');
+            
+            // Check if Supabase client is properly initialized
+            if (!supabase) {
+                log('ERROR: Supabase client is not initialized');
+                return;
+            }
+            
+            log('Supabase client initialized');
+            
+            // Check if storage is available
+            if (!supabase.storage) {
+                log('ERROR: Supabase storage is not available');
+                return;
+            }
+            
+            log('Supabase storage is available');
+            
+            // List buckets
+            try {
+                const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+                if (listError) {
+                    log(`ERROR listing buckets: ${JSON.stringify(listError)}`);
+                } else {
+                    log(`Available buckets: ${JSON.stringify(buckets)}`);
+                }
+            } catch (error) {
+                log(`Exception while listing buckets: ${error}`);
+            }
+            
+            // Test upload with a small file
+            try {
+                const testFileName = `test-upload-${Date.now()}.txt`;
+                const testContent = 'This is a test file';
+                const blob = new Blob([testContent], { type: 'text/plain' });
+                
+                log(`Attempting to upload test file: ${testFileName}`);
+                const { data, error } = await supabase.storage
+                    .from('generated_images')
+                    .upload(testFileName, blob, {
+                        cacheControl: '3600',
+                        upsert: true
+                    });
+                
+                if (error) {
+                    log(`Upload error: ${JSON.stringify(error)}`);
+                } else {
+                    log(`Upload successful: ${JSON.stringify(data)}`);
+                    
+                    // Try to get the public URL
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('generated_images')
+                        .getPublicUrl(testFileName);
+                    
+                    log(`Public URL: ${publicUrl}`);
+                }
+            } catch (error) {
+                log(`Exception during upload test: ${error}`);
+            }
+        }
+        
+        testSupabase();
+    </script>
+</body>
+</html>
