@@ -627,8 +627,11 @@ const App: React.FC = () => {
       const { imageBase64, mimeType, enhancedPrompt } = await generateWallpaperImage(params, geminiApiKey || undefined);
       
       // Upload image to Supabase Storage (fallback to base64 if upload fails)
-      // Save images in the 'placeholders' folder as per project requirements
-      const fileName = `placeholders/wallpaper-${Date.now()}-${crypto.randomUUID()}.png`;
+      // Save images in the 'placeholders/generated_images/' folder with PixelWalls naming
+      // Get the next image number
+      const existingWallpapers = wallpapers.filter(wp => wp.url.includes('PixelWalls_'));
+      const nextNumber = existingWallpapers.length + 1;
+      const fileName = `placeholders/generated_images/PixelWalls_${nextNumber.toString().padStart(2, '0')}.png`;
       const imageData = `data:${mimeType};base64,${imageBase64}`;
       
       console.log('Attempting to upload image to Supabase:', { fileName, mimeType, imageDataLength: imageData.length });
