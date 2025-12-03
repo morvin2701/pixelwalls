@@ -38,11 +38,12 @@ const getBackendUrl = () => {
            window.location.port === '3000';  // Add port 3000 as development port
   };
   
-  // For production, use your Render backend URL
+  // For production, use the Render backend URL
   // For development, use localhost:5000
+  // Based on project memory, the production backend should be used in production
   return isDevelopment() 
     ? 'http://localhost:5000' 
-    : 'https://pixelwallsbackend.onrender.com';  // Use your Render backend URL
+    : 'https://pixelwallsbackend.onrender.com';  // Production backend URL
 };
 
 // Initial Placeholder Data
@@ -847,8 +848,14 @@ const App: React.FC = () => {
       console.log('AMOUNT IN PAISE:', razorpayOptions.amount);
       console.log('AMOUNT IN RUPEES:', razorpayOptions.amount / 100);
       
+      console.log('=== INITIATING PAYMENT ===');
+      console.log('Razorpay options:', razorpayOptions);
+      console.log('Backend URL for payment:', getBackendUrl());
+      
       // Initialize payment
       const paymentSuccess = await paymentService.initiatePayment(razorpayOptions, getBackendUrl());
+      
+      console.log('Payment result:', paymentSuccess);
       
       if (paymentSuccess) {
         setIsPremium(true);

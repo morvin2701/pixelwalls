@@ -46,11 +46,12 @@ const getBackendUrl = () => {
            window.location.port === '3000';  // Add port 3000 as development port
   };
   
-  // For production, use your Render backend URL
+  // For production, use the Render backend URL
   // For development, use localhost:5000
+  // Based on project memory, the production backend should be used in production
   return isDevelopment() 
     ? 'http://localhost:5000' 
-    : 'https://pixelwallsbackend.onrender.com';  // Use your Render backend URL
+    : 'https://pixelwallsbackend.onrender.com';  // Production backend URL
 };
 
 export const paymentService = {
@@ -76,6 +77,9 @@ export const paymentService = {
       // Add timeout to the fetch request
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
+      console.log('Making fetch request to:', `${backendUrl}/create-order`);
+      console.log('Request body:', JSON.stringify(params));
       
       const response = await fetch(`${backendUrl}/create-order`, {
         method: 'POST',
@@ -290,6 +294,15 @@ export const paymentService = {
             const userId = options.notes?.user_id;
             console.log('User ID from payment options:', userId);
             
+            console.log('Sending payment details to backend for verification');
+            console.log('Verification endpoint:', `${backendUrl}/verify-payment`);
+            console.log('Verification payload:', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              userId: userId
+            });
+                      
             // Send payment details to backend for verification
             const verificationResponse = await fetch(`${backendUrl}/verify-payment`, {
               method: 'POST',
@@ -325,6 +338,14 @@ export const paymentService = {
           // Extract user_id from options notes if available
           const userId = options.notes?.user_id;
           console.log('User ID from payment options:', userId);
+          
+          console.log('Sending failed payment details to backend');
+          console.log('Failed payment endpoint:', `${getBackendUrl()}/payment-failed`);
+          console.log('Failed payment payload:', {
+            razorpay_order_id: response.error.metadata.order_id,
+            error: response.error,
+            userId: userId
+          });
           
           // Send failed payment details to backend to update payment history
           const backendUrl = getBackendUrl();
