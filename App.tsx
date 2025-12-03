@@ -20,7 +20,6 @@ import { paymentService } from './services/paymentService';
 import { userService } from './services/userService';
 import { indexedDBService } from './services/indexedDBService';
 import { uploadImageToSupabase } from './services/imageStorageService';
-import { wallpaperService } from './services/wallpaperService';
 // Import the Supabase setup to ensure storage is configured
 // import './services/supabaseSetup'; // Disabled to prevent initialization issues
 import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown, Filter } from 'lucide-react';
@@ -292,57 +291,33 @@ const App: React.FC = () => {
       console.log('Loaded API key');
     }
     
-    // Load user wallpapers - try backend first, then localStorage
+    // Load user wallpapers from localStorage
     const userId = localStorage.getItem('userId');
     if (userId) {
       console.log('Loading wallpapers for user:', userId);
-      
-      // Try to load from backend first
-      wallpaperService.loadWallpapers(userId)
-        .then(backendWallpapers => {
-          if (backendWallpapers && backendWallpapers.length > 0) {
-            console.log('Loaded wallpapers from backend:', backendWallpapers.length);
-            setWallpapers(backendWallpapers);
-          } else {
-            // Fall back to localStorage if backend has no wallpapers
-            const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
-            if (savedWallpapers) {
-              try {
-                const parsedWallpapers = JSON.parse(savedWallpapers);
-                console.log('Loaded wallpapers from localStorage:', parsedWallpapers.length);
-                setWallpapers(parsedWallpapers);
-              } catch (e) {
-                console.error('Failed to parse saved wallpapers:', e);
-                // Fall back to initial wallpapers if parsing fails
-                console.log('Falling back to initial wallpapers');
-                setWallpapers(INITIAL_WALLPAPERS);
-              }
-            } else {
-              console.log('No saved wallpapers found, using initial wallpapers');
-              setWallpapers(INITIAL_WALLPAPERS);
-            }
-          }
-        })
-        .catch(error => {
-          console.error('Failed to load wallpapers from backend:', error);
-          // Fall back to localStorage on error
-          const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
-          if (savedWallpapers) {
-            try {
-              const parsedWallpapers = JSON.parse(savedWallpapers);
-              console.log('Loaded wallpapers from localStorage (after backend error):', parsedWallpapers.length);
-              setWallpapers(parsedWallpapers);
-            } catch (e) {
-              console.error('Failed to parse saved wallpapers:', e);
-              // Fall back to initial wallpapers if parsing fails
-              console.log('Falling back to initial wallpapers');
-              setWallpapers(INITIAL_WALLPAPERS);
-            }
-          } else {
-            console.log('No saved wallpapers found, using initial wallpapers');
-            setWallpapers(INITIAL_WALLPAPERS);
-          }
-        });
+      const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
+      if (savedWallpapers) {
+        try {
+          const parsedWallpapers = JSON.parse(savedWallpapers);
+          console.log('Loaded wallpapers from localStorage:', parsedWallpapers.length);
+          // Filter out any wallpapers with base64 URLs to reduce memory usage
+          // (they'll be reloaded from Supabase when needed)
+          const filteredWallpapers = parsedWallpapers.map((wp: Wallpaper) => {
+            // If it's a base64 URL, we might want to check if there's a Supabase version
+            // But for now, we'll keep all URLs as they are
+            return wp;
+          });
+          setWallpapers(filteredWallpapers);
+        } catch (e) {
+          console.error('Failed to parse saved wallpapers:', e);
+          // Fall back to initial wallpapers if parsing fails
+          console.log('Falling back to initial wallpapers');
+          setWallpapers(INITIAL_WALLPAPERS);
+        }
+      } else {
+        console.log('No saved wallpapers found, using initial wallpapers');
+        setWallpapers(INITIAL_WALLPAPERS);
+      }
     } else {
       console.log('No user ID found, using initial wallpapers');
       setWallpapers(INITIAL_WALLPAPERS);
@@ -359,7 +334,7 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated]);
 
-  // Save wallpapers to backend and local storage whenever they change
+  // Save wallpapers to local storage whenever they change
   useEffect(() => {
     console.log('Wallpapers changed, triggering save effect');
     console.log('isAuthenticated:', isAuthenticated);
@@ -369,20 +344,7 @@ const App: React.FC = () => {
       console.log('User ID from localStorage:', userId);
       
       if (userId) {
-        // Save to backend first
-        wallpaperService.saveWallpapers(userId, wallpapers)
-          .then(success => {
-            if (success) {
-              console.log('Wallpapers successfully saved to backend');
-            } else {
-              console.warn('Failed to save wallpapers to backend');
-            }
-          })
-          .catch(error => {
-            console.error('Error saving wallpapers to backend:', error);
-          });
-        
-        // Also save to IndexedDB for offline access
+        // Save to IndexedDB for offline access
         if (indexedDBService.isIndexedDBSupported()) {
           console.log('IndexedDB is supported, saving wallpapers');
           
