@@ -128,12 +128,22 @@ export const uploadImageToSupabase = async (
 
     // Get public URL for the uploaded image
     console.log('Generating public URL for:', { bucketName, fileName });
-    const { data: { publicUrl } } = supabase.storage
+    const { data: urlData } = supabase.storage
       .from(bucketName)
       .getPublicUrl(fileName);
+    
+    const publicUrl = urlData?.publicUrl || '';
     console.log('Generated public URL:', publicUrl);
-      
-    console.log('Generated public URL:', publicUrl);
+    
+    // Validate that we got a proper URL
+    if (!publicUrl || publicUrl.trim() === '') {
+      console.warn('Failed to generate valid public URL');
+      return {
+        success: true,
+        url: '',
+        error: 'Failed to generate public URL'
+      };
+    }
 
     return {
       success: true,

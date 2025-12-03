@@ -267,39 +267,53 @@ const App: React.FC = () => {
   
   // Load user plan and payment history from localStorage on mount
   useEffect(() => {
+    console.log('Initializing app state...');
+    
     // Load current user plan from localStorage
     const savedPlan = localStorage.getItem('currentUserPlan');
     if (savedPlan && (savedPlan === 'base' || savedPlan === 'basic' || savedPlan === 'pro')) {
       setCurrentUserPlan(savedPlan);
       setIsPremium(savedPlan !== 'base');
+      console.log('Loaded user plan:', savedPlan);
     }
     
     // Load username from localStorage
     const savedUsername = localStorage.getItem('username');
     if (savedUsername) {
       setUsername(savedUsername);
+      console.log('Loaded username:', savedUsername);
     }
     
     // Load API key from localStorage on mount
     const savedApiKey = localStorage.getItem('geminiApiKey');
     if (savedApiKey) {
       setGeminiApiKey(savedApiKey);
+      console.log('Loaded API key');
     }
     
     // Load user wallpapers from localStorage
     const userId = localStorage.getItem('userId');
     if (userId) {
+      console.log('Loading wallpapers for user:', userId);
       const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
       if (savedWallpapers) {
         try {
           const parsedWallpapers = JSON.parse(savedWallpapers);
+          console.log('Loaded wallpapers from localStorage:', parsedWallpapers.length);
           setWallpapers(parsedWallpapers);
         } catch (e) {
           console.error('Failed to parse saved wallpapers:', e);
           // Fall back to initial wallpapers if parsing fails
+          console.log('Falling back to initial wallpapers');
           setWallpapers(INITIAL_WALLPAPERS);
         }
+      } else {
+        console.log('No saved wallpapers found, using initial wallpapers');
+        setWallpapers(INITIAL_WALLPAPERS);
       }
+    } else {
+      console.log('No user ID found, using initial wallpapers');
+      setWallpapers(INITIAL_WALLPAPERS);
     }
   }, []);
   
