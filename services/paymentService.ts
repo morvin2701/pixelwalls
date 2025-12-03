@@ -93,10 +93,18 @@ export const paymentService = {
       console.log('Response status:', response.status);
       console.log('Response headers:', [...response.headers.entries()]);
       
+      // Check if the response is OK (status 200-299)
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Failed to create order. Status:', response.status, 'Error:', errorText);
         throw new Error(`Failed to create order: ${response.status} ${errorText}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const errorText = await response.text();
+        console.error('Response is not JSON:', errorText);
+        throw new Error(`Invalid response format: ${errorText}`);
       }
       
       const data = await response.json();
@@ -314,6 +322,18 @@ export const paymentService = {
                 userId: userId // Include userId in verification
               })
             });
+            
+            console.log('Verification response status:', verificationResponse.status);
+            console.log('Verification response headers:', [...verificationResponse.headers.entries()]);
+            
+            // Check if the response is OK (status 200-299)
+            if (!verificationResponse.ok) {
+              const errorText = await verificationResponse.text();
+              console.error('Verification request failed with status:', verificationResponse.status);
+              console.error('Verification error response:', errorText);
+              resolve(false);
+              return;
+            }
             
             const verificationResult = await verificationResponse.json();
             console.log('Verification result:', verificationResult);
