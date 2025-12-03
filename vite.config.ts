@@ -17,9 +17,22 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          '@': path.resolve(__dirname, '.'),
+          '@': path.resolve(__dirname, './src'),
         }
       },
-      base: './'
+      base: './',
+      build: {
+        outDir: 'dist',
+        assetsDir: 'assets',
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              vendor: ['react', 'react-dom'],
+              ui: ['framer-motion', 'lucide-react'],
+              utils: ['@supabase/supabase-js', '@google/genai']
+            }
+          }
+        }
+      }
     };
 });
