@@ -78,6 +78,14 @@ export const uploadImageToSupabase = async (
     };
   }
   
+  // Log the Supabase client info for debugging
+  console.log('Supabase client info:', {
+    clientType: typeof supabase,
+    storageType: typeof supabase.storage,
+    hasFromMethod: typeof supabase.storage.from === 'function',
+    bucketName: bucketName
+  });
+  
   try {
     console.log('Starting Supabase upload for:', fileName);
     
@@ -97,12 +105,14 @@ export const uploadImageToSupabase = async (
     console.log('Blob created with type:', mimeType, 'size:', blob.size);
 
     // Upload to Supabase Storage
+    console.log('Attempting Supabase upload with:', { bucketName, fileName, blobSize: blob.size });
     const { data, error } = await supabase.storage
       .from(bucketName)
       .upload(fileName, blob, {
         cacheControl: '3600',
         upsert: false
       });
+    console.log('Supabase upload result:', { data, error });
       
     console.log('Upload response:', { data, error });
 
@@ -117,9 +127,11 @@ export const uploadImageToSupabase = async (
     }
 
     // Get public URL for the uploaded image
+    console.log('Generating public URL for:', { bucketName, fileName });
     const { data: { publicUrl } } = supabase.storage
       .from(bucketName)
       .getPublicUrl(fileName);
+    console.log('Generated public URL:', publicUrl);
       
     console.log('Generated public URL:', publicUrl);
 
