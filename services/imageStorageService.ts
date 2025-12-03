@@ -10,18 +10,29 @@ try {
   console.log('Supabase storage:', supabase?.storage);
   
   // Check if we have a real Supabase client (not the dummy one)
-  if (!supabase || 
-      typeof supabase.storage === 'undefined' || 
-      (supabase.storage.from('').upload.toString().includes('Supabase not configured'))) {
+  if (!supabase) {
     isSupabaseConfigured = false;
-    console.warn('Supabase is not properly configured. Image uploads will be disabled.');
+    console.warn('Supabase is not properly configured - no client. Image uploads will be disabled.');
     console.warn('Reasons:', {
-      noSupabase: !supabase,
-      noStorage: typeof supabase.storage === 'undefined',
-      dummyClient: supabase.storage?.from('').upload.toString().includes('Supabase not configured')
+      noSupabase: !supabase
+    });
+  } else if (typeof supabase.storage === 'undefined') {
+    isSupabaseConfigured = false;
+    console.warn('Supabase is not properly configured - no storage. Image uploads will be disabled.');
+    console.warn('Reasons:', {
+      noStorage: typeof supabase.storage === 'undefined'
+    });
+  } else if (supabase.storage.from && supabase.storage.from('').upload && 
+             supabase.storage.from('').upload.toString().includes('Supabase not configured')) {
+    isSupabaseConfigured = false;
+    console.warn('Supabase is not properly configured - dummy client. Image uploads will be disabled.');
+    console.warn('Reasons:', {
+      dummyClient: supabase.storage.from('').upload.toString().includes('Supabase not configured')
     });
   } else {
     console.log('Supabase is properly configured for image uploads');
+    console.log('Supabase client type:', typeof supabase);
+    console.log('Supabase storage type:', typeof supabase.storage);
   }
 } catch (error) {
   isSupabaseConfigured = false;
@@ -54,6 +65,16 @@ export const uploadImageToSupabase = async (
     return {
       success: true, // Still return success so the app continues to work
       url: '' // Empty URL means use base64 data directly
+    };
+  }
+  
+  // Double-check that we have a real Supabase client
+  if (!supabase || typeof supabase.storage === 'undefined') {
+    console.error('Supabase client is not properly initialized even though isSupabaseConfigured is true');
+    return {
+      success: true,
+      url: '',
+      error: 'Supabase client not properly initialized'
     };
   }
   
