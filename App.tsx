@@ -630,7 +630,9 @@ const App: React.FC = () => {
       const fileName = `wallpaper-${Date.now()}-${crypto.randomUUID()}.png`;
       const imageData = `data:${mimeType};base64,${imageBase64}`;
       
+      console.log('Attempting to upload image to Supabase:', { fileName, mimeType, imageDataLength: imageData.length });
       const uploadResult = await uploadImageToSupabase(imageData, fileName);
+      console.log('Upload result:', uploadResult);
       
       let imageUrl = `data:${mimeType};base64,${imageBase64}`;
       if (uploadResult.success && uploadResult.url) {

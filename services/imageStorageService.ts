@@ -5,9 +5,14 @@ let isSupabaseConfigured = true;
 
 // Check if Supabase is properly configured
 try {
-  if (!supabase || typeof supabase.storage === 'undefined') {
+  // Check if we have a real Supabase client (not the dummy one)
+  if (!supabase || 
+      typeof supabase.storage === 'undefined' || 
+      (supabase.storage.from('').upload.toString().includes('Supabase not configured'))) {
     isSupabaseConfigured = false;
     console.warn('Supabase is not properly configured. Image uploads will be disabled.');
+  } else {
+    console.log('Supabase is properly configured for image uploads');
   }
 } catch (error) {
   isSupabaseConfigured = false;
@@ -42,6 +47,8 @@ export const uploadImageToSupabase = async (
   }
   
   try {
+    console.log('Starting Supabase upload for:', fileName);
+    
     // Convert base64 to Blob
     const base64Data = imageData.split(',')[1] || imageData;
     const byteString = atob(base64Data);
@@ -54,6 +61,8 @@ export const uploadImageToSupabase = async (
       ia[i] = byteString.charCodeAt(i);
     }
     const blob = new Blob([ab], { type: mimeType });
+    
+    console.log('Blob created with type:', mimeType, 'size:', blob.size);
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
@@ -62,6 +71,8 @@ export const uploadImageToSupabase = async (
         cacheControl: '3600',
         upsert: false
       });
+      
+    console.log('Upload response:', { data, error });
 
     if (error) {
       console.error('Supabase upload error:', error);
@@ -77,6 +88,8 @@ export const uploadImageToSupabase = async (
     const { data: { publicUrl } } = supabase.storage
       .from(bucketName)
       .getPublicUrl(fileName);
+      
+    console.log('Generated public URL:', publicUrl);
 
     return {
       success: true,
