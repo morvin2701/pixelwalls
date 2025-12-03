@@ -9,5 +9,16 @@
     "env": {
       "NPM_FLAGS": "--legacy-peer-deps"
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    }
+  ]
 }

@@ -21,7 +21,7 @@ import { userService } from './services/userService';
 import { indexedDBService } from './services/indexedDBService';
 import { uploadImageToSupabase } from './services/imageStorageService';
 // Import the Supabase setup to ensure storage is configured
-import './services/supabaseSetup';
+// import './services/supabaseSetup'; // Disabled to prevent initialization issues
 import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown, Filter } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -626,7 +626,7 @@ const App: React.FC = () => {
       // We now expect enhancedPrompt in the response
       const { imageBase64, mimeType, enhancedPrompt } = await generateWallpaperImage(params, geminiApiKey || undefined);
       
-      // Upload image to Supabase Storage
+      // Upload image to Supabase Storage (fallback to base64 if upload fails)
       const fileName = `wallpaper-${Date.now()}-${crypto.randomUUID()}.png`;
       const imageData = `data:${mimeType};base64,${imageBase64}`;
       
@@ -636,9 +636,9 @@ const App: React.FC = () => {
       if (uploadResult.success && uploadResult.url) {
         imageUrl = uploadResult.url;
         console.log('Image successfully uploaded to Supabase:', uploadResult.url);
-      } else {
-        console.error('Failed to upload image to Supabase:', uploadResult.error);
-        // Fallback to base64 if upload fails
+      } else if (uploadResult.error) {
+        console.warn('Failed to upload image to Supabase (using base64 fallback):', uploadResult.error);
+        // Fallback to base64 is already set as default
       }
 
       const newWallpaper: Wallpaper = {

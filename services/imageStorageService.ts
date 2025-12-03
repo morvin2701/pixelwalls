@@ -1,5 +1,19 @@
 import { supabase } from './supabaseClient';
 
+// Flag to track if Supabase is properly configured
+let isSupabaseConfigured = true;
+
+// Check if Supabase is properly configured
+try {
+  if (!supabase || typeof supabase.storage === 'undefined') {
+    isSupabaseConfigured = false;
+    console.warn('Supabase is not properly configured. Image uploads will be disabled.');
+  }
+} catch (error) {
+  isSupabaseConfigured = false;
+  console.warn('Error checking Supabase configuration:', error);
+}
+
 export interface UploadResult {
   success: boolean;
   url?: string;
@@ -18,11 +32,20 @@ export const uploadImageToSupabase = async (
   fileName: string,
   bucketName: string = 'generated_images'
 ): Promise<UploadResult> => {
+  // If Supabase is not configured, return early with success but no URL
+  if (!isSupabaseConfigured) {
+    console.warn('Skipping Supabase upload - not configured');
+    return {
+      success: true, // Still return success so the app continues to work
+      url: '' // Empty URL means use base64 data directly
+    };
+  }
+  
   try {
     // Convert base64 to Blob
     const base64Data = imageData.split(',')[1] || imageData;
     const byteString = atob(base64Data);
-    const mimeMatch = imageData.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/);
+    const mimeMatch = imageData.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9\-.+]+).*,.*/);
     const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
     
     const ab = new ArrayBuffer(byteString.length);
@@ -42,8 +65,10 @@ export const uploadImageToSupabase = async (
 
     if (error) {
       console.error('Supabase upload error:', error);
+      // Return success but with empty URL so base64 is used as fallback
       return {
-        success: false,
+        success: true,
+        url: '',
         error: error.message
       };
     }
@@ -59,8 +84,10 @@ export const uploadImageToSupabase = async (
     };
   } catch (error: any) {
     console.error('Image upload error:', error);
+    // Return success but with empty URL so base64 is used as fallback
     return {
-      success: false,
+      success: true,
+      url: '',
       error: error.message || 'Failed to upload image'
     };
   }
