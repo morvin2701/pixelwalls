@@ -635,6 +635,11 @@ const App: React.FC = () => {
       const uploadResult = await uploadImageToSupabase(imageData, fileName);
       console.log('Upload result:', uploadResult);
       
+      // Log if we're using the fallback
+      if (!uploadResult.url) {
+        console.warn('Using base64 fallback instead of Supabase URL');
+      }
+      
       let imageUrl = `data:${mimeType};base64,${imageBase64}`;
       if (uploadResult.success && uploadResult.url) {
         imageUrl = uploadResult.url;

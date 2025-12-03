@@ -5,12 +5,21 @@ let isSupabaseConfigured = true;
 
 // Check if Supabase is properly configured
 try {
+  console.log('Checking Supabase configuration...');
+  console.log('Supabase object:', supabase);
+  console.log('Supabase storage:', supabase?.storage);
+  
   // Check if we have a real Supabase client (not the dummy one)
   if (!supabase || 
       typeof supabase.storage === 'undefined' || 
       (supabase.storage.from('').upload.toString().includes('Supabase not configured'))) {
     isSupabaseConfigured = false;
     console.warn('Supabase is not properly configured. Image uploads will be disabled.');
+    console.warn('Reasons:', {
+      noSupabase: !supabase,
+      noStorage: typeof supabase.storage === 'undefined',
+      dummyClient: supabase.storage?.from('').upload.toString().includes('Supabase not configured')
+    });
   } else {
     console.log('Supabase is properly configured for image uploads');
   }
@@ -37,6 +46,8 @@ export const uploadImageToSupabase = async (
   fileName: string,
   bucketName: string = 'generated_images'
 ): Promise<UploadResult> => {
+  console.log('uploadImageToSupabase called with:', { fileName, bucketName, isSupabaseConfigured });
+  
   // If Supabase is not configured, return early with success but no URL
   if (!isSupabaseConfigured) {
     console.warn('Skipping Supabase upload - not configured');
