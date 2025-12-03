@@ -627,7 +627,8 @@ const App: React.FC = () => {
       const { imageBase64, mimeType, enhancedPrompt } = await generateWallpaperImage(params, geminiApiKey || undefined);
       
       // Upload image to Supabase Storage (fallback to base64 if upload fails)
-      const fileName = `wallpaper-${Date.now()}-${crypto.randomUUID()}.png`;
+      // Save images in the 'placeholders' folder as per project requirements
+      const fileName = `placeholders/wallpaper-${Date.now()}-${crypto.randomUUID()}.png`;
       const imageData = `data:${mimeType};base64,${imageBase64}`;
       
       console.log('Attempting to upload image to Supabase:', { fileName, mimeType, imageDataLength: imageData.length });
