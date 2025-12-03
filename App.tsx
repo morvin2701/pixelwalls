@@ -811,6 +811,13 @@ const App: React.FC = () => {
       
       console.log('Order data received from backend:', orderData);
       
+      // Validate that we received a valid order ID
+      if (!orderData.orderId) {
+        console.error('Invalid order data received from backend:', orderData);
+        alert('Failed to create payment order. Please try again.');
+        return;
+      }
+      
       // Prepare Razorpay options with explicit hardcoded values
       const razorpayOptions = {
         key: 'rzp_test_RkFCO2cOtggjtn',
@@ -882,7 +889,10 @@ const App: React.FC = () => {
       
       let errorMessage = 'An unknown error occurred. Please try again.';
       
-      if (error instanceof TypeError) {
+      // Handle specific Razorpay gateway errors
+      if (error.message && error.message.includes('Payment processing failed due to error at bank or wallet gateway')) {
+        errorMessage = 'Payment processing failed at the bank or wallet level. This could be due to:\n\n1. Insufficient funds\n2. Card declined\n3. Invalid card details\n4. Expired card\n5. Network issues\n\nPlease check your payment details and try again.';
+      } else if (error instanceof TypeError) {
         if (error.message.includes('fetch')) {
           errorMessage = 'Unable to connect to the payment server. Please make sure:\n\n1. The backend server is running\n2. You have internet connectivity\n3. Firewall is not blocking the connection\n4. The server address is correct\n\nTechnical details: ' + error.message;
         } else if (error.message.includes('protocol')) {

@@ -283,6 +283,11 @@ export const paymentService = {
       throw new Error('Order ID is missing');
     }
     
+    // Validate order ID format
+    if (typeof options.order_id !== 'string' || options.order_id.trim() === '') {
+      throw new Error('Invalid Order ID format');
+    }
+    
     console.log('Backend URL for verification:', backendUrl);
     
     // Load Razorpay script
@@ -359,10 +364,14 @@ export const paymentService = {
           const userId = options.notes?.user_id;
           console.log('User ID from payment options:', userId);
           
+          // Extract order_id safely, with fallback
+          const orderId = response.error?.metadata?.order_id || response.error?.orderId || null;
+          console.log('Extracted order ID:', orderId);
+          
           console.log('Sending failed payment details to backend');
           console.log('Failed payment endpoint:', `${getBackendUrl()}/payment-failed`);
           console.log('Failed payment payload:', {
-            razorpay_order_id: response.error.metadata.order_id,
+            razorpay_order_id: orderId,
             error: response.error,
             userId: userId
           });
@@ -373,7 +382,7 @@ export const paymentService = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              razorpay_order_id: response.error.metadata.order_id,
+              razorpay_order_id: orderId,
               error: response.error,
               userId: userId // Include userId in failed payment notification
             })
