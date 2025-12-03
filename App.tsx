@@ -46,6 +46,9 @@ const getBackendUrl = () => {
 };
 
 // Initial Placeholder Data
+// Log initial wallpapers for debugging
+console.log('Initial wallpapers loaded');
+
 const INITIAL_WALLPAPERS: Wallpaper[] = [
   {
     id: 'init-1',
@@ -240,6 +243,14 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ViewMode>('gallery');
   const [mobileTab, setMobileTab] = useState<'create' | 'explore'>('explore');
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>(INITIAL_WALLPAPERS);
+  
+  // Debug wallpapers state changes
+  useEffect(() => {
+    console.log('Wallpapers state updated:', wallpapers.length, 'wallpapers');
+    if (wallpapers.length > 0) {
+      console.log('First wallpaper URL:', wallpapers[0].url);
+    }
+  }, [wallpapers]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -644,12 +655,14 @@ const App: React.FC = () => {
       }
       
       let imageUrl = `data:${mimeType};base64,${imageBase64}`;
-      if (uploadResult.success && uploadResult.url) {
+      if (uploadResult.success && uploadResult.url && uploadResult.url.trim() !== '') {
         imageUrl = uploadResult.url;
         console.log('Image successfully uploaded to Supabase:', uploadResult.url);
       } else if (uploadResult.error) {
         console.warn('Failed to upload image to Supabase (using base64 fallback):', uploadResult.error);
         // Fallback to base64 is already set as default
+      } else if (uploadResult.success && (!uploadResult.url || uploadResult.url.trim() === '')) {
+        console.warn('Upload was successful but no URL returned (using base64 fallback)');
       }
 
       const newWallpaper: Wallpaper = {
@@ -662,6 +675,8 @@ const App: React.FC = () => {
         favorite: false,
         category: determineCategory(enhancedPrompt)
       };
+      
+      console.log('Creating new wallpaper with URL:', { imageUrl, isSupabaseUrl: imageUrl.startsWith('http') });
 
       // Artificial delay to let the skeleton animation play a bit longer for better feel
       await new Promise(resolve => setTimeout(resolve, 500));

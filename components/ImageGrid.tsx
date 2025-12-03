@@ -119,6 +119,7 @@ export const ImageGrid: React.FC<ImageGridProps> = ({ wallpapers, onSelect, onTo
             whileTap={{ scale: 0.98 }}
           >
             <div className="relative overflow-hidden">
+                {console.log('Rendering wallpaper:', { id: wp.id, url: wp.url, isHttp: wp.url?.startsWith('http') })}
                 <motion.img
                   initial={{ scale: 1.1, filter: 'blur(10px)' }}
                   animate={{ scale: 1, filter: 'blur(0px)' }}

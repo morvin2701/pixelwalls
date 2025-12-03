@@ -41,7 +41,7 @@ export async function testSupabase() {
   // Test upload with a small file
   try {
     console.log('Testing upload...');
-    const testFileName = `debug-test-${Date.now()}.txt`;
+    const testFileName = `placeholders/generated_images/debug-test-${Date.now()}.txt`;
     const testContent = 'This is a debug test file';
     const blob = new Blob([testContent], { type: 'text/plain' });
     
