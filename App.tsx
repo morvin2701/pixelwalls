@@ -556,7 +556,13 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      alert('Login failed. Please try again.');
+      // Allow login to proceed even if backend is not available (demo mode)
+      setIsAuthenticated(true);
+      setUsername(username);
+      localStorage.setItem('username', username);
+      localStorage.setItem('userId', 'demo-user-id');
+      setWallpapers(INITIAL_WALLPAPERS);
+      alert('Backend not available. Running in demo mode with sample wallpapers.');
     }
   };
 
