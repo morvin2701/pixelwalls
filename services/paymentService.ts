@@ -34,24 +34,10 @@ const loadRazorpayScript = (): Promise<boolean> => {
 };
 
 // Get the backend URL based on environment
+import { getBackendUrl as getBackendUrlUtil } from './apiUtils';
+
 const getBackendUrl = () => {
-  // Determine if we're in development or production
-  const isDevelopment = () => {
-    // Check if we're running on localhost
-    return window.location.hostname === 'localhost' || 
-           window.location.hostname === '127.0.0.1' ||
-           window.location.hostname.startsWith('localhost:') ||
-           window.location.port.startsWith('300') ||  // This will match 3000, 3001, 3002, etc.
-           window.location.port === '5173' ||
-           window.location.port === '3000';  // Add port 3000 as development port
-  };
-  
-  // For production, use the Render backend URL
-  // For development, use localhost:5000
-  // Based on project memory, the production backend should be used in production
-  return isDevelopment() 
-    ? 'http://localhost:5000' 
-    : 'https://pixelwallsbackend.onrender.com';  // Production backend URL
+  return getBackendUrlUtil();
 };
 
 export const paymentService = {

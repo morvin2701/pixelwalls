@@ -1,5 +1,9 @@
 // User service for handling user registration and authentication
-import { getBackendUrl } from './apiUtils';
+import { getBackendUrl as getBackendUrlUtil } from './apiUtils';
+
+const getBackendUrl = () => {
+  return getBackendUrlUtil();
+};
 
 interface RegisterUserParams {
   username: string;

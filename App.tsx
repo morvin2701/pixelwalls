@@ -20,30 +20,15 @@ import { paymentService } from './services/paymentService';
 import { userService } from './services/userService';
 import { indexedDBService } from './services/indexedDBService';
 import { uploadImageToSupabase } from './services/imageStorageService';
+import { getBackendUrl as getBackendUrlUtil } from './services/apiUtils';
 // Import the Supabase setup to ensure storage is configured
 // import './services/supabaseSetup'; // Disabled to prevent initialization issues
 import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown, Filter } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-// Helper function to get backend URL
+// Function to get backend URL
 const getBackendUrl = () => {
-  // Determine if we're in development or production
-  const isDevelopment = () => {
-    // Check if we're running on localhost
-    return window.location.hostname === 'localhost' || 
-           window.location.hostname === '127.0.0.1' ||
-           window.location.hostname.startsWith('localhost:') ||
-           window.location.port.startsWith('300') ||  // This will match 3000, 3001, 3002, etc.
-           window.location.port === '5173' ||
-           window.location.port === '3000';  // Add port 3000 as development port
-  };
-  
-  // For production, use the Render backend URL
-  // For development, use localhost:5000
-  // Based on project memory, the production backend should be used in production
-  return isDevelopment() 
-    ? 'http://localhost:5000' 
-    : 'https://pixelwallsbackend.onrender.com';  // Production backend URL
+  return getBackendUrlUtil();
 };
 
 // Initial Placeholder Data
@@ -496,24 +481,8 @@ const App: React.FC = () => {
     }
   };
   
-  // Helper function to get backend URL
   const getBackendUrl = () => {
-    // Determine if we're in development or production
-    const isDevelopment = () => {
-      // Check if we're running on localhost
-      return window.location.hostname === 'localhost' || 
-             window.location.hostname === '127.0.0.1' ||
-             window.location.hostname.startsWith('localhost:') ||
-             window.location.port.startsWith('300') ||  // This will match 3000, 3001, 3002, etc.
-             window.location.port === '5173' ||
-             window.location.port === '3000';  // Add port 3000 as development port
-    };
-    
-    // For production, use your Render backend URL
-    // For development, use localhost:5000
-    return isDevelopment() 
-      ? 'http://localhost:5000' 
-      : 'https://pixelwallsbackend.onrender.com';  // Use your Render backend URL
+    return getBackendUrlUtil();
   };
   
   const handleApiKeyInputConfirm = (apiKey: string) => {
