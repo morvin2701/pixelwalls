@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { Wallpaper } from '../types';
-import { X, Download, Heart, Share2, Wand2, Trash2 } from 'lucide-react';
+import { X, Download, Heart, Share2, Wand2, Trash2, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 interface ImageModalProps {
@@ -14,6 +14,8 @@ interface ImageModalProps {
   onClose: () => void;
   onToggleFavorite: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (wallpaper: Wallpaper) => void;
+  onShare: (wallpaper: Wallpaper) => void;
 }
 
 const overlayVariants = {
@@ -44,7 +46,7 @@ const modalVariants: Variants = {
     }
 };
 
-export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onToggleFavorite, onDelete }) => {
+export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onToggleFavorite, onDelete, onEdit, onShare }) => {
   const [downloadQuality, setDownloadQuality] = useState<'High' | 'Medium'>('High');
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -269,6 +271,16 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                   <motion.button 
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.96 }}
+                    onClick={() => onEdit(wallpaper)}
+                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
+                  >
+                    <Edit3 className="w-5 h-5" />
+                    <span>Edit</span>
+                  </motion.button>
+                  
+                  <motion.button 
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.96 }}
                     onClick={() => onToggleFavorite(wallpaper.id)}
                     className={`flex-1 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl font-medium border transition-all ${
                         wallpaper.favorite 
@@ -282,10 +294,12 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                   
                   <motion.button
                     whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.96 }} 
-                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => onShare(wallpaper)}
+                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all"
                   >
                     <Share2 className="w-5 h-5" />
+                    <span>Share</span>
                   </motion.button>
                   
                   <motion.button

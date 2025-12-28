@@ -8,6 +8,12 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { GeneratorControls } from './components/GeneratorControls';
 import { ImageGrid } from './components/ImageGrid';
 import { ImageModal } from './components/ImageModal';
+import { ImageEditor } from './components/ImageEditor';
+import { UserProfile } from './components/UserProfile';
+import { WallpaperOrganizer } from './components/WallpaperOrganizer';
+import { WallpaperShare } from './components/WallpaperShare';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
+import { PremiumFeatures } from './components/PremiumFeatures';
 import { ApiKeyDialog } from './components/ApiKeyDialog';
 import { ApiKeyInputDialog } from './components/ApiKeyInputDialog';
 import { PremiumModal } from './components/PremiumModal';
@@ -23,7 +29,7 @@ import { uploadImageToSupabase } from './services/imageStorageService';
 import { getBackendUrl as getBackendUrlUtil } from './services/apiUtils';
 // Import the Supabase setup to ensure storage is configured
 // import './services/supabaseSetup'; // Disabled to prevent initialization issues
-import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown, Filter } from 'lucide-react';
+import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown, Filter, User, Tag, BarChart3 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Function to get backend URL
@@ -901,6 +907,174 @@ const App: React.FC = () => {
       return updatedWallpapers;
     });
   }, []);
+  
+  const [showEditor, setShowEditor] = useState(false);
+  const [editingWallpaper, setEditingWallpaper] = useState<Wallpaper | null>(null);
+  
+  const handleEditWallpaper = useCallback((wallpaper: Wallpaper) => {
+    setEditingWallpaper(wallpaper);
+    setShowEditor(true);
+  }, []);
+  
+  const handleSaveEditedWallpaper = useCallback((editedWallpaper: Wallpaper) => {
+    setWallpapers(prev => {
+      const updatedWallpapers = prev.map(wp => 
+        wp.id === editedWallpaper.id ? editedWallpaper : wp
+      );
+      
+      // Save to IndexedDB if supported
+      if (indexedDBService.isIndexedDBSupported()) {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          indexedDBService.saveUserWallpapers(userId, updatedWallpapers)
+            .then(() => {
+              console.log('Edited wallpapers saved to IndexedDB');
+            })
+            .catch((error) => {
+              console.error('Failed to save edited wallpapers to IndexedDB:', error);
+              
+              // Fallback to localStorage
+              try {
+                localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(updatedWallpapers));
+                console.log('Edited wallpapers saved to localStorage');
+              } catch (localStorageError) {
+                console.error('Failed to save edited wallpapers to localStorage:', localStorageError);
+              }
+            });
+        }
+      } else {
+        // Fallback to localStorage
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          try {
+            localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(updatedWallpapers));
+            console.log('Edited wallpapers saved to localStorage');
+          } catch (error) {
+            console.error('Failed to save edited wallpapers to localStorage:', error);
+          }
+        }
+      }
+      
+      return updatedWallpapers;
+    });
+    
+    setShowEditor(false);
+    setEditingWallpaper(null);
+  }, []);
+  
+  const handleCancelEdit = useCallback(() => {
+    setShowEditor(false);
+    setEditingWallpaper(null);
+  }, []);
+  
+  // State for user profile
+  const [showProfile, setShowProfile] = useState(false);
+  
+  // State for wallpaper organizer
+  const [showOrganizer, setShowOrganizer] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredWallpapers, setFilteredWallpapers] = useState<Wallpaper[]>(wallpapers);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  
+  // Function to tag a wallpaper
+  const handleTagWallpaper = useCallback((id: string, tags: string[]) => {
+    setWallpapers(prev => {
+      const updatedWallpapers = prev.map(wp => 
+        wp.id === id ? { ...wp, tags } : wp
+      );
+      
+      // Save to IndexedDB if supported
+      if (indexedDBService.isIndexedDBSupported()) {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          indexedDBService.saveUserWallpapers(userId, updatedWallpapers)
+            .then(() => {
+              console.log('Wallpapers saved to IndexedDB after tagging');
+            })
+            .catch((error) => {
+              console.error('Failed to save wallpapers to IndexedDB after tagging:', error);
+              
+              // Fallback to localStorage
+              try {
+                localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(updatedWallpapers));
+                console.log('Wallpapers saved to localStorage after tagging');
+              } catch (localStorageError) {
+                console.error('Failed to save wallpapers to localStorage after tagging:', localStorageError);
+              }
+            });
+        }
+      } else {
+        // Fallback to localStorage
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          try {
+            localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(updatedWallpapers));
+            console.log('Wallpapers saved to localStorage after tagging');
+          } catch (error) {
+            console.error('Failed to save wallpapers to localStorage after tagging:', error);
+          }
+        }
+      }
+      
+      return updatedWallpapers;
+    });
+  }, []);
+  
+  // Function to search wallpapers
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setFilteredWallpapers(wallpapers);
+      return;
+    }
+    
+    const filtered = wallpapers.filter(wp => 
+      wp.prompt.toLowerCase().includes(query.toLowerCase()) ||
+      (wp.tags && wp.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
+    );
+    
+    setFilteredWallpapers(filtered);
+  }, [wallpapers]);
+  
+  // Function to filter by tags
+  const handleFilterByTags = useCallback((tags: string[]) => {
+    setSelectedTags(tags);
+    
+    if (tags.length === 0) {
+      setFilteredWallpapers(wallpapers);
+      return;
+    }
+    
+    const filtered = wallpapers.filter(wp => 
+      wp.tags && tags.every(tag => wp.tags?.includes(tag))
+    );
+    
+    setFilteredWallpapers(filtered);
+  }, [wallpapers]);
+  
+  // State for wallpaper sharing
+  const [showShare, setShowShare] = useState(false);
+  const [sharingWallpaper, setSharingWallpaper] = useState<Wallpaper | null>(null);
+  
+  // Function to handle wallpaper sharing
+  const handleShareWallpaper = useCallback((wallpaper: Wallpaper) => {
+    setSharingWallpaper(wallpaper);
+    setShowShare(true);
+  }, []);
+  
+  // Function to handle like
+  const handleLikeWallpaper = useCallback((id: string) => {
+    // In a real implementation, this would update the like count on the server
+    // For now, we'll just toggle the favorite status
+    toggleFavorite(id);
+  }, [toggleFavorite]);
+  
+  // State for analytics dashboard
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  
+  // State for premium features
+  const [showPremiumFeatures, setShowPremiumFeatures] = useState(false);
 
   const handlePurchase = async (planId: string) => {
     console.log('=== HANDLE PURCHASE DEBUG INFO ===');
@@ -1286,6 +1460,34 @@ const App: React.FC = () => {
                 )}
                 
                 <button 
+                  onClick={() => setShowProfile(true)}
+                  className="flex items-center justify-center p-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  <User className="w-5 h-5" />
+                </button>
+                
+                <button 
+                  onClick={() => setShowOrganizer(true)}
+                  className="flex items-center justify-center p-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  <Tag className="w-5 h-5" />
+                </button>
+                
+                <button 
+                  onClick={() => setShowAnalytics(true)}
+                  className="flex items-center justify-center p-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                </button>
+                
+                <button 
+                  onClick={() => setShowPremiumFeatures(true)}
+                  className="flex items-center justify-center p-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  <Crown className="w-5 h-5" />
+                </button>
+                
+                <button 
                   onClick={handleLogout}
                   className="flex items-center justify-center px-4 py-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
                 >
@@ -1312,7 +1514,7 @@ const App: React.FC = () => {
             {/* Grid Area */}
             <div className="flex-1 w-full overflow-y-auto overflow-x-hidden custom-scrollbar p-4 md:p-8 pt-0 pb-[100px] md:pb-0">
               <ImageGrid 
-                wallpapers={displayedWallpapers} 
+                wallpapers={showOrganizer ? filteredWallpapers : displayedWallpapers} 
                 onSelect={setSelectedWallpaper} 
                 onToggleFavorite={toggleFavorite}
                 isGenerating={isGenerating}
@@ -1367,6 +1569,87 @@ const App: React.FC = () => {
                 onClose={() => setSelectedWallpaper(null)}
                 onToggleFavorite={toggleFavorite}
                 onDelete={deleteWallpaper}
+                onEdit={handleEditWallpaper}
+                onShare={handleShareWallpaper}
+              />
+            )}
+          </AnimatePresence>
+          
+          {/* Image Editor Modal */}
+          <AnimatePresence>
+            {showEditor && editingWallpaper && (
+              <ImageEditor
+                wallpaper={editingWallpaper}
+                onClose={handleCancelEdit}
+                onSave={handleSaveEditedWallpaper}
+              />
+            )}
+          </AnimatePresence>
+          
+          {/* User Profile Modal */}
+          <AnimatePresence>
+            {showProfile && (
+              <UserProfile
+                userId={localStorage.getItem('userId') || 'demo-user-id'}
+                username={username || 'Guest'}
+                email={localStorage.getItem('username') || 'guest@example.com'}
+                wallpaperCount={wallpapers.length}
+                favoriteCount={wallpapers.filter(wp => wp.favorite).length}
+                onEditProfile={() => {}}
+                onUploadAvatar={() => {}}
+                onClose={() => setShowProfile(false)}
+              />
+            )}
+          </AnimatePresence>
+          
+          {/* Wallpaper Organizer Modal */}
+          <AnimatePresence>
+            {showOrganizer && (
+              <WallpaperOrganizer
+                wallpapers={wallpapers}
+                onTagWallpaper={handleTagWallpaper}
+                onSearch={handleSearch}
+                onFilterByTags={handleFilterByTags}
+                onClose={() => {
+                  setShowOrganizer(false);
+                  // Reset to show all wallpapers when closing organizer
+                  setFilteredWallpapers(wallpapers);
+                  setSearchQuery('');
+                  setSelectedTags([]);
+                }}
+              />
+            )}
+          </AnimatePresence>
+          
+          {/* Wallpaper Share Modal */}
+          <AnimatePresence>
+            {showShare && sharingWallpaper && (
+              <WallpaperShare
+                wallpaper={sharingWallpaper}
+                onLike={handleLikeWallpaper}
+                onShare={() => {}}
+                onClose={() => setShowShare(false)}
+              />
+            )}
+          </AnimatePresence>
+          
+          {/* Analytics Dashboard Modal */}
+          <AnimatePresence>
+            {showAnalytics && (
+              <AnalyticsDashboard
+                wallpapers={wallpapers}
+                onClose={() => setShowAnalytics(false)}
+              />
+            )}
+          </AnimatePresence>
+          
+          {/* Premium Features Modal */}
+          <AnimatePresence>
+            {showPremiumFeatures && (
+              <PremiumFeatures
+                isPremium={isPremium}
+                onUpgrade={() => setShowPremiumModal(true)}
+                onClose={() => setShowPremiumFeatures(false)}
               />
             )}
           </AnimatePresence>

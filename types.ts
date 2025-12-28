@@ -12,6 +12,7 @@ export interface Wallpaper {
   createdAt: number;
   favorite?: boolean;
   category?: string;
+  tags?: string[];
 }
 
 export interface GenerationParams {
