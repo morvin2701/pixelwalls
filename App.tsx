@@ -277,36 +277,76 @@ const App: React.FC = () => {
       console.log('Loaded API key');
     }
     
-    // Load user wallpapers from localStorage
+    // Load user wallpapers - first check if user is authenticated
     const userId = localStorage.getItem('userId');
-    if (userId) {
-      console.log('Loading wallpapers for user:', userId);
+    const isAuthenticatedLocal = !!userId; // Check if userId exists
+    
+    if (isAuthenticatedLocal && userId) {
+      console.log('User is authenticated, loading wallpapers for user:', userId);
+      
+      // First try IndexedDB
+      let loadedWallpapers = null;
+      if (indexedDBService.isIndexedDBSupported()) {
+        try {
+          console.log('IndexedDB is supported, attempting to load from IndexedDB');
+          indexedDBService.loadUserWallpapers(userId)
+            .then((indexedDBWallpapers) => {
+              if (indexedDBWallpapers && indexedDBWallpapers.length > 0) {
+                console.log('Loaded wallpapers from IndexedDB:', indexedDBWallpapers.length);
+                setWallpapers(indexedDBWallpapers);
+              } else {
+                console.log('No wallpapers found in IndexedDB, trying localStorage');
+                // If no IndexedDB wallpapers, try localStorage
+                loadWallpapersFromLocalStorage(userId);
+              }
+            })
+            .catch((error) => {
+              console.error('Error loading from IndexedDB:', error);
+              // Fallback to localStorage
+              loadWallpapersFromLocalStorage(userId);
+            });
+        } catch (error) {
+          console.error('Error attempting to load from IndexedDB:', error);
+          // Fallback to localStorage
+          loadWallpapersFromLocalStorage(userId);
+        }
+      } else {
+        console.log('IndexedDB not supported, loading from localStorage');
+        loadWallpapersFromLocalStorage(userId);
+      }
+    } else {
+      console.log('No authenticated user found, using initial wallpapers');
+      setWallpapers(INITIAL_WALLPAPERS);
+    }
+    
+    // Function to load wallpapers from localStorage
+    function loadWallpapersFromLocalStorage(userId: string) {
       const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
       if (savedWallpapers) {
         try {
           const parsedWallpapers = JSON.parse(savedWallpapers);
           console.log('Loaded wallpapers from localStorage:', parsedWallpapers.length);
-          // Filter out any wallpapers with base64 URLs to reduce memory usage
-          // (they'll be reloaded from Supabase when needed)
-          const filteredWallpapers = parsedWallpapers.map((wp: Wallpaper) => {
-            // If it's a base64 URL, we might want to check if there's a Supabase version
-            // But for now, we'll keep all URLs as they are
-            return wp;
-          });
-          setWallpapers(filteredWallpapers);
+          setWallpapers(parsedWallpapers);
+          
+          // If IndexedDB is supported and we loaded from localStorage, save to IndexedDB
+          if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
+            indexedDBService.saveUserWallpapers(userId, parsedWallpapers)
+              .then(() => {
+                console.log('Wallpapers saved to IndexedDB from localStorage');
+              })
+              .catch((error) => {
+                console.error('Failed to save wallpapers to IndexedDB:', error);
+              });
+          }
         } catch (e) {
-          console.error('Failed to parse saved wallpapers:', e);
-          // Fall back to initial wallpapers if parsing fails
+          console.error('Failed to parse saved wallpapers from localStorage:', e);
           console.log('Falling back to initial wallpapers');
           setWallpapers(INITIAL_WALLPAPERS);
         }
       } else {
-        console.log('No saved wallpapers found, using initial wallpapers');
+        console.log('No saved wallpapers found in localStorage, using initial wallpapers');
         setWallpapers(INITIAL_WALLPAPERS);
       }
-    } else {
-      console.log('No user ID found, using initial wallpapers');
-      setWallpapers(INITIAL_WALLPAPERS);
     }
   }, []);
   
@@ -316,6 +356,56 @@ const App: React.FC = () => {
       const userId = localStorage.getItem('userId');
       if (userId) {
         fetchUserPlan(userId);
+        
+        // Also ensure wallpapers are loaded when user authenticates
+        // This handles cases where authentication state changes
+        if (indexedDBService.isIndexedDBSupported()) {
+          indexedDBService.loadUserWallpapers(userId)
+            .then((indexedDBWallpapers) => {
+              if (indexedDBWallpapers && indexedDBWallpapers.length > 0) {
+                console.log('Reloaded wallpapers from IndexedDB after authentication:', indexedDBWallpapers.length);
+                setWallpapers(indexedDBWallpapers);
+              } else {
+                // If no IndexedDB wallpapers, try localStorage
+                const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
+                if (savedWallpapers) {
+                  try {
+                    const parsedWallpapers = JSON.parse(savedWallpapers);
+                    console.log('Reloaded wallpapers from localStorage after authentication:', parsedWallpapers.length);
+                    setWallpapers(parsedWallpapers);
+                  } catch (e) {
+                    console.error('Failed to parse wallpapers from localStorage after authentication:', e);
+                  }
+                }
+              }
+            })
+            .catch((error) => {
+              console.error('Error loading wallpapers from IndexedDB after authentication:', error);
+              // Fallback to localStorage
+              const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
+              if (savedWallpapers) {
+                try {
+                  const parsedWallpapers = JSON.parse(savedWallpapers);
+                  console.log('Loaded wallpapers from localStorage after authentication:', parsedWallpapers.length);
+                  setWallpapers(parsedWallpapers);
+                } catch (e) {
+                  console.error('Failed to parse wallpapers from localStorage after authentication:', e);
+                }
+              }
+            });
+        } else {
+          // Fallback to localStorage if IndexedDB not supported
+          const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
+          if (savedWallpapers) {
+            try {
+              const parsedWallpapers = JSON.parse(savedWallpapers);
+              console.log('Loaded wallpapers from localStorage after authentication:', parsedWallpapers.length);
+              setWallpapers(parsedWallpapers);
+            } catch (e) {
+              console.error('Failed to parse wallpapers from localStorage after authentication:', e);
+            }
+          }
+        }
       }
     }
   }, [isAuthenticated]);
@@ -338,6 +428,14 @@ const App: React.FC = () => {
           indexedDBService.saveUserWallpapers(userId, wallpapers)
             .then(() => {
               console.log('Wallpapers successfully saved to IndexedDB');
+              
+              // Also save to localStorage as backup
+              try {
+                localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(wallpapers));
+                console.log('Wallpapers also saved to localStorage as backup');
+              } catch (localStorageError) {
+                console.error('Failed to save wallpapers to localStorage backup:', localStorageError);
+              }
             })
             .catch((error) => {
               console.error('Failed to save wallpapers to IndexedDB:', error);
@@ -511,30 +609,46 @@ const App: React.FC = () => {
         try {
           console.log('Attempting to load wallpapers for user:', result.userId);
           
-          // Check if IndexedDB is supported
+          let loadedWallpapers = null;
+          
+          // First try IndexedDB
           if (indexedDBService.isIndexedDBSupported()) {
             console.log('IndexedDB is supported, loading wallpapers from IndexedDB');
-            const loadedWallpapers = await indexedDBService.loadUserWallpapers(result.userId);
-            if (loadedWallpapers && loadedWallpapers.length > 0) {
-              console.log('Found saved wallpapers in IndexedDB');
-              console.log('Number of wallpapers loaded:', loadedWallpapers.length);
-              setWallpapers(loadedWallpapers);
-            } else {
-              console.log('No saved wallpapers found in IndexedDB');
-              // If no saved wallpapers, use initial wallpapers
-              setWallpapers(INITIAL_WALLPAPERS);
+            try {
+              loadedWallpapers = await indexedDBService.loadUserWallpapers(result.userId);
+              if (loadedWallpapers && loadedWallpapers.length > 0) {
+                console.log('Found saved wallpapers in IndexedDB');
+                console.log('Number of wallpapers loaded from IndexedDB:', loadedWallpapers.length);
+                setWallpapers(loadedWallpapers);
+              } else {
+                console.log('No saved wallpapers found in IndexedDB');
+              }
+            } catch (indexedDBError) {
+              console.error('Error loading from IndexedDB:', indexedDBError);
             }
-          } else {
-            console.log('IndexedDB not supported, falling back to localStorage');
-            // Fallback to localStorage if IndexedDB is not supported
+          }
+          
+          // If no wallpapers loaded from IndexedDB, try localStorage
+          if (!loadedWallpapers || loadedWallpapers.length === 0) {
+            console.log('IndexedDB not supported or no data found, falling back to localStorage');
             const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
             if (savedWallpapers) {
               console.log('Found saved wallpapers in localStorage');
               try {
                 const parsedWallpapers = JSON.parse(savedWallpapers);
-                console.log('Parsed wallpapers:', parsedWallpapers);
-                console.log('Number of wallpapers loaded:', parsedWallpapers.length);
+                console.log('Parsed wallpapers from localStorage:', parsedWallpapers);
+                console.log('Number of wallpapers loaded from localStorage:', parsedWallpapers.length);
                 setWallpapers(parsedWallpapers);
+                
+                // If IndexedDB is supported, also save to IndexedDB for future use
+                if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
+                  try {
+                    await indexedDBService.saveUserWallpapers(result.userId, parsedWallpapers);
+                    console.log('Wallpapers saved to IndexedDB from localStorage');
+                  } catch (saveError) {
+                    console.error('Failed to save wallpapers to IndexedDB after loading from localStorage:', saveError);
+                  }
+                }
               } catch (e) {
                 console.error('Failed to parse saved wallpapers:', e);
                 // Fall back to initial wallpapers if parsing fails
@@ -581,9 +695,9 @@ const App: React.FC = () => {
     // Reset plan to base
     setCurrentUserPlan('base');
     setIsPremium(false);
-    // Clear wallpapers from state but keep them in localStorage for when user logs back in
-    console.log('Clearing wallpapers from state but keeping in localStorage');
-    setWallpapers(INITIAL_WALLPAPERS);
+    // Keep user wallpapers in state so they remain visible after logout
+    // The wallpapers are already saved in localStorage and IndexedDB
+    console.log('User logged out, keeping wallpapers in state');
     console.log('Logout completed');
   };
 
