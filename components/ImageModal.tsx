@@ -6,13 +6,14 @@
 
 import React, { useState } from 'react';
 import { Wallpaper } from '../types';
-import { X, Download, Heart, Share2, Wand2 } from 'lucide-react';
+import { X, Download, Heart, Share2, Wand2, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 interface ImageModalProps {
   wallpaper: Wallpaper | null;
   onClose: () => void;
   onToggleFavorite: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 const overlayVariants = {
@@ -43,7 +44,7 @@ const modalVariants: Variants = {
     }
 };
 
-export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onToggleFavorite }) => {
+export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onToggleFavorite, onDelete }) => {
   const [downloadQuality, setDownloadQuality] = useState<'High' | 'Medium'>('High');
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -282,9 +283,24 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                   <motion.button
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.96 }} 
-                    className="px-4 py-4 rounded-xl border border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
+                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
                   >
                     <Share2 className="w-5 h-5" />
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to delete this wallpaper?')) {
+                        onDelete(wallpaper.id);
+                        onClose(); // Close modal after deletion
+                      }
+                    }}
+                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                    <span>Delete</span>
                   </motion.button>
               </div>
            </div>

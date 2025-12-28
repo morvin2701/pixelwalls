@@ -860,6 +860,47 @@ const App: React.FC = () => {
         setSelectedWallpaper(prev => prev ? {...prev, favorite: !prev.favorite} : null);
     }
   }, [selectedWallpaper]);
+  
+  const deleteWallpaper = useCallback((id: string) => {
+    setWallpapers(prev => {
+      const updatedWallpapers = prev.filter(wp => wp.id !== id);
+      
+      // Save to IndexedDB if supported
+      if (indexedDBService.isIndexedDBSupported()) {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          indexedDBService.saveUserWallpapers(userId, updatedWallpapers)
+            .then(() => {
+              console.log('Wallpapers saved to IndexedDB after deletion');
+            })
+            .catch((error) => {
+              console.error('Failed to save wallpapers to IndexedDB after deletion:', error);
+              
+              // Fallback to localStorage
+              try {
+                localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(updatedWallpapers));
+                console.log('Wallpapers saved to localStorage after deletion');
+              } catch (localStorageError) {
+                console.error('Failed to save wallpapers to localStorage after deletion:', localStorageError);
+              }
+            });
+        }
+      } else {
+        // Fallback to localStorage
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          try {
+            localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(updatedWallpapers));
+            console.log('Wallpapers saved to localStorage after deletion');
+          } catch (error) {
+            console.error('Failed to save wallpapers to localStorage after deletion:', error);
+          }
+        }
+      }
+      
+      return updatedWallpapers;
+    });
+  }, []);
 
   const handlePurchase = async (planId: string) => {
     console.log('=== HANDLE PURCHASE DEBUG INFO ===');
@@ -1047,7 +1088,10 @@ const App: React.FC = () => {
             {showPaymentHistory && (
               <PaymentHistoryModal 
                 payments={paymentHistory} 
-                onClose={() => setShowPaymentHistory(false)} 
+                onClose={() => {
+                  setShowPaymentHistory(false);
+                  setActiveTab('gallery');
+                }} 
               />
             )}
           </AnimatePresence>
@@ -1117,7 +1161,7 @@ const App: React.FC = () => {
                     transition={{ duration: 0.2 }}
                     className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60"
                   >
-                    {activeTab === 'gallery' ? 'Explore' : activeTab === 'favorites' ? 'Favorites' : 'Payment History'}
+                    {activeTab === 'gallery' ? 'Explore' : activeTab === 'favorites' ? 'Favorites' : showPaymentHistory ? 'Payment History' : 'Explore'}
                   </motion.h2>
                 </AnimatePresence>
                 
@@ -1140,15 +1184,14 @@ const App: React.FC = () => {
 
               <div className="flex items-center space-x-2">
                 <div className="flex items-center bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-sm relative">
-                  {/* Sliding Tab Background */}
+                  {/* Sliding Tab Background - only for gallery and favorites, not payments */}
                   <motion.div 
                     className="absolute top-1 bottom-1 rounded-lg bg-zinc-700 shadow-sm z-0"
                     layoutId="tab-background"
                     initial={false}
                     animate={{
-                      left: activeTab === 'gallery' ? 4 : activeTab === 'favorites' ? '33%' : '66%',
-                      width: activeTab === 'gallery' ? 'calc(33% - 6px)' : 'calc(33% - 4px)',
-                      x: activeTab === 'favorites' ? 2 : activeTab === 'paymentHistory' ? 4 : 0
+                      left: activeTab === 'gallery' ? 4 : 'calc(33% + 2px)',
+                      width: 'calc(33% - 6px)',
                     }}
                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
@@ -1168,7 +1211,10 @@ const App: React.FC = () => {
                     <span className="text-sm font-medium hidden md:inline">Favorites</span>
                   </button>
                   <button 
-                    onClick={() => setShowPaymentHistory(true)}
+                    onClick={() => {
+                      setShowPaymentHistory(true);
+                      setActiveTab('paymentHistory');
+                    }}
                     className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${showPaymentHistory ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1176,68 +1222,68 @@ const App: React.FC = () => {
                     </svg>
                     <span className="text-sm font-medium hidden md:inline">Payments</span>
                   </button>
-                  
-                  {/* Category Filter */}
-                  {activeTab === 'gallery' && (
-                    <div className="relative">
-                      <button 
-                        onClick={() => setShowCategoryFilter(!showCategoryFilter)}
-                        className={`flex items-center justify-center p-2 rounded-lg transition-all ${showCategoryFilter ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/10 hover:border-white/20'} backdrop-blur-sm`}
-                        title="Filter by category"
-                      >
-                        <Filter className="w-5 h-5" />
-                      </button>
-                      
-                      {/* Category Filter Dropdown */}
-                      <AnimatePresence>
-                        {showCategoryFilter && (
-                          <>
-                            <motion.div 
-                              initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                              transition={{ duration: 0.2 }}
-                              className="absolute right-0 top-12 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
-                            >
-                              <div className="py-2">
-                                {[
-                                  { value: 'all', label: 'All Categories' },
-                                  { value: 'latest', label: 'Latest' },
-                                  { value: 'trending', label: 'Trending' },
-                                  { value: 'mountains', label: 'Mountains' },
-                                  { value: 'beaches', label: 'Beaches' },
-                                  { value: 'forest', label: 'Forest' },
-                                  { value: 'city', label: 'City' },
-                                  { value: 'space', label: 'Space' },
-                                  { value: 'animals', label: 'Animals' },
-                                  { value: 'abstract', label: 'Abstract' },
-                                  { value: 'fantasy', label: 'Fantasy' }
-                                ].map((category) => (
-                                  <button
-                                    key={category.value}
-                                    onClick={() => {
-                                      setSelectedCategory(category.value);
-                                      setShowCategoryFilter(false);
-                                    }}
-                                    className={`w-full text-left px-4 py-2 text-sm transition-colors ${selectedCategory === category.value ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-300 hover:bg-zinc-800/50 hover:text-white'}`}
-                                  >
-                                    {category.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </motion.div>
-                            
-                            {/* Click outside to close */}
-                            <div 
-                              className="fixed inset-0 z-40" 
-                              onClick={() => setShowCategoryFilter(false)}
-                            />
-                          </>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  )}
                 </div>
+                
+                {/* Category Filter - Only show when on gallery tab */}
+                {activeTab === 'gallery' && (
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+                      className={`flex items-center justify-center p-2 rounded-lg transition-all ${showCategoryFilter ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/10 hover:border-white/20'} backdrop-blur-sm`}
+                      title="Filter by category"
+                    >
+                      <Filter className="w-5 h-5" />
+                    </button>
+                    
+                    {/* Category Filter Dropdown */}
+                    <AnimatePresence>
+                      {showCategoryFilter && (
+                        <>
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="absolute right-0 top-12 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+                          >
+                            <div className="py-2">
+                              {[
+                                { value: 'all', label: 'All Categories' },
+                                { value: 'latest', label: 'Latest' },
+                                { value: 'trending', label: 'Trending' },
+                                { value: 'mountains', label: 'Mountains' },
+                                { value: 'beaches', label: 'Beaches' },
+                                { value: 'forest', label: 'Forest' },
+                                { value: 'city', label: 'City' },
+                                { value: 'space', label: 'Space' },
+                                { value: 'animals', label: 'Animals' },
+                                { value: 'abstract', label: 'Abstract' },
+                                { value: 'fantasy', label: 'Fantasy' }
+                              ].map((category) => (
+                                <button
+                                  key={category.value}
+                                  onClick={() => {
+                                    setSelectedCategory(category.value);
+                                    setShowCategoryFilter(false);
+                                  }}
+                                  className={`w-full text-left px-4 py-2 text-sm transition-colors ${selectedCategory === category.value ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-300 hover:bg-zinc-800/50 hover:text-white'}`}
+                                >
+                                  {category.label}
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                          
+                          {/* Click outside to close */}
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => setShowCategoryFilter(false)}
+                          />
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
                 
                 <button 
                   onClick={handleLogout}
@@ -1297,7 +1343,10 @@ const App: React.FC = () => {
             </button>
             
             <button 
-              onClick={() => setShowPaymentHistory(true)}
+              onClick={() => {
+                setShowPaymentHistory(true);
+                setActiveTab('paymentHistory');
+              }}
               className="flex flex-col items-center justify-center w-1/3 h-full space-y-1.5 active:scale-95 transition-transform"
             >
               <div className={`p-1.5 rounded-xl transition-colors ${showPaymentHistory ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
@@ -1317,6 +1366,7 @@ const App: React.FC = () => {
                 wallpaper={selectedWallpaper} 
                 onClose={() => setSelectedWallpaper(null)}
                 onToggleFavorite={toggleFavorite}
+                onDelete={deleteWallpaper}
               />
             )}
           </AnimatePresence>
