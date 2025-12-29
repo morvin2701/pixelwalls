@@ -19,6 +19,7 @@ import { ApiKeyInputDialog } from './components/ApiKeyInputDialog';
 import { PremiumModal } from './components/PremiumModal';
 import { LoginPage } from './components/LoginPage';
 import { PaymentHistoryModal } from './components/PaymentHistoryModal';
+import MobileDrawerMenu from './components/MobileDrawerMenu';
 import { Wallpaper, ViewMode, GenerationParams } from './types';
 import { generateWallpaperImage } from './services/geminiService';
 import { useApiKey } from './hooks/useApiKey';
@@ -1209,6 +1210,9 @@ const App: React.FC = () => {
   
   // State for premium features
   const [showPremiumFeatures, setShowPremiumFeatures] = useState(false);
+  
+  // State for mobile drawer menu
+  const [showMobileDrawer, setShowMobileDrawer] = useState(false);
 
   const handlePurchase = async (planId: string) => {
     console.log('=== HANDLE PURCHASE DEBUG INFO ===');
@@ -1660,7 +1664,7 @@ const App: React.FC = () => {
           <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-zinc-950/95 backdrop-blur-xl border-t border-white/10 z-40 flex items-center justify-between px-4 pb-4 safe-area-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
             <button 
               onClick={() => setMobileTab('explore')}
-              className="flex flex-col items-center justify-center w-1/3 h-full space-y-1.5 active:scale-95 transition-transform"
+              className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
             >
               <div className={`p-1.5 rounded-xl transition-colors ${mobileTab === 'explore' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
                 <Compass className="w-6 h-6" />
@@ -1670,7 +1674,7 @@ const App: React.FC = () => {
             
             <button 
               onClick={() => setMobileTab('create')}
-              className="flex flex-col items-center justify-center w-1/3 h-full space-y-1.5 active:scale-95 transition-transform"
+              className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
             >
               <div className={`p-1.5 rounded-xl transition-colors ${mobileTab === 'create' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
                 <PlusCircle className="w-6 h-6" />
@@ -1683,7 +1687,7 @@ const App: React.FC = () => {
                 setShowPaymentHistory(true);
                 setActiveTab('paymentHistory');
               }}
-              className="flex flex-col items-center justify-center w-1/3 h-full space-y-1.5 active:scale-95 transition-transform"
+              className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
             >
               <div className={`p-1.5 rounded-xl transition-colors ${showPaymentHistory ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1691,6 +1695,18 @@ const App: React.FC = () => {
                 </svg>
               </div>
               <span className={`text-[10px] font-medium ${showPaymentHistory ? 'text-purple-400' : 'text-zinc-500'}`}>Payments</span>
+            </button>
+            
+            <button 
+              onClick={() => setShowMobileDrawer(true)}
+              className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
+            >
+              <div className="p-1.5 rounded-xl transition-colors text-zinc-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </div>
+              <span className="text-[10px] font-medium text-zinc-500">Menu</span>
             </button>
           </nav>
 
@@ -1787,6 +1803,46 @@ const App: React.FC = () => {
               />
             )}
           </AnimatePresence>
+          
+          {/* Mobile Drawer Menu */}
+          <MobileDrawerMenu
+            isOpen={showMobileDrawer}
+            onClose={() => setShowMobileDrawer(false)}
+            onNavigate={(tab) => {
+              switch(tab) {
+                case 'explore':
+                  setMobileTab('explore');
+                  break;
+                case 'favorites':
+                  setMobileTab('gallery');
+                  setActiveTab('favorites');
+                  break;
+                case 'payment-history':
+                  setShowPaymentHistory(true);
+                  setActiveTab('paymentHistory');
+                  break;
+                case 'filter':
+                  setShowCategoryFilter(!showCategoryFilter);
+                  break;
+                case 'profile':
+                  setShowProfile(true);
+                  break;
+                case 'organizer':
+                  setShowOrganizer(true);
+                  break;
+                case 'analytics':
+                  setShowAnalytics(true);
+                  break;
+                case 'premium':
+                  setShowPremiumFeatures(true);
+                  break;
+                default:
+                  setMobileTab('explore');
+              }
+            }}
+            onLogout={handleLogout}
+            currentUserPlan={currentUserPlan}
+          />
         </div>
       )}
     </>
