@@ -1494,7 +1494,7 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="hidden md:flex items-center space-x-2">
                 <div className="flex items-center bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-sm relative">
                   {/* Sliding Tab Background - only for gallery and favorites, not payments */}
                   <motion.div 
