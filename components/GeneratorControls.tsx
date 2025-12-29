@@ -10,7 +10,7 @@ import { Wand2, Sparkles, Monitor, Smartphone, Square, Zap, History, Trash2, X, 
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface GeneratorControlsProps {
-  onGenerate: (params: GenerationParams) => void;
+  onGenerate: (params: GenerationParams, clearPrompt: () => void) => void;
   isGenerating: boolean;
   currentUserPlan: 'base' | 'basic' | 'pro'; // Add current user plan prop
 }
@@ -166,7 +166,7 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
       aspectRatio,
       stylePreset: selectedStyle,
       enhancePrompt: useEnhancer
-    });
+    }, () => setPrompt(''));
     
     // Update generation count for Basic Premium users
     if (currentUserPlan === 'basic') {

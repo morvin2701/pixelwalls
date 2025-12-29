@@ -698,6 +698,10 @@ const App: React.FC = () => {
     localStorage.removeItem('username');
     localStorage.removeItem('geminiApiKey');
     localStorage.removeItem('currentUserPlan');
+    // Clear draft settings to ensure prompt field is empty after logout
+    localStorage.removeItem('pixelwalls_draft_settings');
+    // Clear prompt history if needed (optional)
+    // localStorage.removeItem('pixelwalls_prompt_history');
     // Reset plan to base
     setCurrentUserPlan('base');
     setIsPremium(false);
@@ -707,7 +711,7 @@ const App: React.FC = () => {
     console.log('Logout completed');
   };
 
-  const handleGenerate = async (params: GenerationParams) => {
+  const handleGenerate = async (params: GenerationParams, clearPrompt: () => void) => {
     // Check if user is on Base Version plan (no generation allowed)
     if (currentUserPlan === 'base') {
       alert('Wallpaper generation is not available on the Base Version plan. Please upgrade to Basic Premium or Pro Premium to generate wallpapers.');
@@ -793,6 +797,9 @@ const App: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       setWallpapers((prev) => [newWallpaper, ...prev]);
+      
+      // Clear the prompt input after successful generation
+      clearPrompt();
 
       // Increment generation count for Basic Premium users
       if (currentUserPlan === 'basic') {
