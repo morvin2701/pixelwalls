@@ -27,6 +27,7 @@ import { userService } from './services/userService';
 import { indexedDBService } from './services/indexedDBService';
 import { uploadImageToSupabase } from './services/imageStorageService';
 import { getBackendUrl as getBackendUrlUtil } from './services/apiUtils';
+import { fetchUserWallpapersFromSupabase, saveUserWallpaperToSupabase, updateUserWallpaperInSupabase, deleteUserWallpaperFromSupabase } from './services/userWallpapersService';
 // Import the Supabase setup to ensure storage is configured
 // import './services/supabaseSetup'; // Disabled to prevent initialization issues
 import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown, Filter, User, Tag, BarChart3 } from 'lucide-react';
@@ -617,20 +618,56 @@ const App: React.FC = () => {
           
           let loadedWallpapers = null;
           
-          // First try IndexedDB
-          if (indexedDBService.isIndexedDBSupported()) {
-            console.log('IndexedDB is supported, loading wallpapers from IndexedDB');
-            try {
-              loadedWallpapers = await indexedDBService.loadUserWallpapers(result.userId);
-              if (loadedWallpapers && loadedWallpapers.length > 0) {
-                console.log('Found saved wallpapers in IndexedDB');
-                console.log('Number of wallpapers loaded from IndexedDB:', loadedWallpapers.length);
-                setWallpapers(loadedWallpapers);
-              } else {
-                console.log('No saved wallpapers found in IndexedDB');
+          // First try Supabase
+          try {
+            console.log('Attempting to load wallpapers from Supabase');
+            const supabaseWallpapers = await fetchUserWallpapersFromSupabase(result.userId);
+            if (supabaseWallpapers && supabaseWallpapers.length > 0) {
+              console.log('Found saved wallpapers in Supabase');
+              console.log('Number of wallpapers loaded from Supabase:', supabaseWallpapers.length);
+              setWallpapers(supabaseWallpapers);
+              loadedWallpapers = supabaseWallpapers;
+              
+              // Save to IndexedDB for offline access
+              if (indexedDBService.isIndexedDBSupported()) {
+                try {
+                  await indexedDBService.saveUserWallpapers(result.userId, supabaseWallpapers);
+                  console.log('Wallpapers saved to IndexedDB from Supabase');
+                } catch (saveError) {
+                  console.error('Failed to save wallpapers to IndexedDB from Supabase:', saveError);
+                }
               }
-            } catch (indexedDBError) {
-              console.error('Error loading from IndexedDB:', indexedDBError);
+              
+              // Save to localStorage for fallback
+              try {
+                localStorage.setItem(`pixelWalls_${result.userId}`, JSON.stringify(supabaseWallpapers));
+                console.log('Wallpapers saved to localStorage from Supabase');
+              } catch (localStorageError) {
+                console.error('Failed to save wallpapers to localStorage from Supabase:', localStorageError);
+              }
+            } else {
+              console.log('No saved wallpapers found in Supabase');
+            }
+          } catch (supabaseError) {
+            console.error('Error loading from Supabase:', supabaseError);
+          }
+          
+          // If no wallpapers loaded from Supabase, try IndexedDB
+          if (!loadedWallpapers || loadedWallpapers.length === 0) {
+            if (indexedDBService.isIndexedDBSupported()) {
+              console.log('IndexedDB is supported, loading wallpapers from IndexedDB');
+              try {
+                loadedWallpapers = await indexedDBService.loadUserWallpapers(result.userId);
+                if (loadedWallpapers && loadedWallpapers.length > 0) {
+                  console.log('Found saved wallpapers in IndexedDB');
+                  console.log('Number of wallpapers loaded from IndexedDB:', loadedWallpapers.length);
+                  setWallpapers(loadedWallpapers);
+                } else {
+                  console.log('No saved wallpapers found in IndexedDB');
+                }
+              } catch (indexedDBError) {
+                console.error('Error loading from IndexedDB:', indexedDBError);
+              }
             }
           }
           
@@ -800,6 +837,21 @@ const App: React.FC = () => {
       
       // Clear the prompt input after successful generation
       clearPrompt();
+      
+      // Save to Supabase
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        try {
+          const savedToSupabase = await saveUserWallpaperToSupabase(userId, newWallpaper);
+          if (savedToSupabase) {
+            console.log('Wallpaper saved to Supabase');
+          } else {
+            console.error('Failed to save wallpaper to Supabase');
+          }
+        } catch (error) {
+          console.error('Failed to save wallpaper to Supabase:', error);
+        }
+      }
 
       // Increment generation count for Basic Premium users
       if (currentUserPlan === 'basic') {
@@ -866,17 +918,57 @@ const App: React.FC = () => {
   };
 
   const toggleFavorite = useCallback((id: string) => {
-    setWallpapers(prev => prev.map(wp => 
-      wp.id === id ? { ...wp, favorite: !wp.favorite } : wp
-    ));
+    setWallpapers(prev => {
+      const updatedWallpapers = prev.map(wp => 
+        wp.id === id ? { ...wp, favorite: !wp.favorite } : wp
+      );
+      
+      // Update in Supabase
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        const wallpaper = updatedWallpapers.find(wp => wp.id === id);
+        if (wallpaper) {
+          updateUserWallpaperInSupabase(userId, wallpaper)
+            .then((success) => {
+              if (success) {
+                console.log('Wallpaper favorite status updated in Supabase');
+              } else {
+                console.error('Failed to update wallpaper favorite status in Supabase');
+              }
+            })
+            .catch((error) => {
+              console.error('Error updating wallpaper favorite status in Supabase:', error);
+            });
+        }
+      }
+      
+      return updatedWallpapers;
+    });
+    
     if (selectedWallpaper && selectedWallpaper.id === id) {
         setSelectedWallpaper(prev => prev ? {...prev, favorite: !prev.favorite} : null);
     }
   }, [selectedWallpaper]);
   
-  const deleteWallpaper = useCallback((id: string) => {
+  const deleteWallpaper = useCallback(async (id: string) => {
     setWallpapers(prev => {
       const updatedWallpapers = prev.filter(wp => wp.id !== id);
+      
+      // Delete from Supabase
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        deleteUserWallpaperFromSupabase(userId, id)
+          .then((success) => {
+            if (success) {
+              console.log('Wallpaper deleted from Supabase');
+            } else {
+              console.error('Failed to delete wallpaper from Supabase');
+            }
+          })
+          .catch((error) => {
+            console.error('Error deleting wallpaper from Supabase:', error);
+          });
+      }
       
       // Save to IndexedDB if supported
       if (indexedDBService.isIndexedDBSupported()) {
@@ -923,11 +1015,27 @@ const App: React.FC = () => {
     setShowEditor(true);
   }, []);
   
-  const handleSaveEditedWallpaper = useCallback((editedWallpaper: Wallpaper) => {
+  const handleSaveEditedWallpaper = useCallback(async (editedWallpaper: Wallpaper) => {
     setWallpapers(prev => {
       const updatedWallpapers = prev.map(wp => 
         wp.id === editedWallpaper.id ? editedWallpaper : wp
       );
+      
+      // Update in Supabase
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        updateUserWallpaperInSupabase(userId, editedWallpaper)
+          .then((success) => {
+            if (success) {
+              console.log('Wallpaper updated in Supabase');
+            } else {
+              console.error('Failed to update wallpaper in Supabase');
+            }
+          })
+          .catch((error) => {
+            console.error('Error updating wallpaper in Supabase:', error);
+          });
+      }
       
       // Save to IndexedDB if supported
       if (indexedDBService.isIndexedDBSupported()) {
@@ -989,6 +1097,25 @@ const App: React.FC = () => {
       const updatedWallpapers = prev.map(wp => 
         wp.id === id ? { ...wp, tags } : wp
       );
+      
+      // Update in Supabase
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        const wallpaper = updatedWallpapers.find(wp => wp.id === id);
+        if (wallpaper) {
+          updateUserWallpaperInSupabase(userId, wallpaper)
+            .then((success) => {
+              if (success) {
+                console.log('Wallpaper tags updated in Supabase');
+              } else {
+                console.error('Failed to update wallpaper tags in Supabase');
+              }
+            })
+            .catch((error) => {
+              console.error('Error updating wallpaper tags in Supabase:', error);
+            });
+        }
+      }
       
       // Save to IndexedDB if supported
       if (indexedDBService.isIndexedDBSupported()) {
