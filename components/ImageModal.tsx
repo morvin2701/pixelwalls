@@ -267,12 +267,12 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                  <span>{isDownloading ? 'Downloading...' : `Download ${downloadQuality}`}</span>
               </motion.button>
               
-              <div className="flex space-x-3">
+              <div className="grid grid-cols-2 gap-3">
                   <motion.button 
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={() => onEdit(wallpaper)}
-                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
+                    className="flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
                   >
                     <Edit3 className="w-5 h-5" />
                     <span>Edit</span>
@@ -282,7 +282,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={() => onToggleFavorite(wallpaper.id)}
-                    className={`flex-1 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl font-medium border transition-all ${
+                    className={`flex items-center justify-center space-x-2 px-4 py-4 rounded-xl font-medium border transition-all ${
                         wallpaper.favorite 
                         ? 'border-red-500/30 bg-red-500/10 text-red-400 shadow-lg shadow-red-900/20' 
                         : 'border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white'
@@ -296,7 +296,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={() => onShare(wallpaper)}
-                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all"
+                    className="flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all"
                   >
                     <Share2 className="w-5 h-5" />
                     <span>Share</span>
@@ -306,12 +306,12 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={() => {
-                      if (window.confirm('Are you sure you want to delete this wallpaper?')) {
+                      if (window.confirm('Are you sure you want to delete this wallpaper? This action cannot be undone.')) {
                         onDelete(wallpaper.id);
                         onClose(); // Close modal after deletion
                       }
                     }}
-                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                    className="flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-red-600 bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-all"
                   >
                     <Trash2 className="w-5 h-5" />
                     <span>Delete</span>
