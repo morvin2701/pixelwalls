@@ -22,6 +22,7 @@ import { LoginPage } from './components/LoginPage';
 import { PaymentHistoryModal } from './components/PaymentHistoryModal';
 import { CommunityFeed } from './components/CommunityFeed';
 import MobileDrawerMenu from './components/MobileDrawerMenu';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Wallpaper, ViewMode, GenerationParams, Collection } from './types';
 import { generateWallpaperImage } from './services/geminiService';
 import { useApiKey } from './hooks/useApiKey';
