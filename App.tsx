@@ -1374,547 +1374,549 @@ const App: React.FC = () => {
       : wallpapers.filter(w => w.category === selectedCategory);
 
   return (
-    <>
-      {!isAuthenticated ? (
-        <LoginPage onLogin={handleLogin} />
-      ) : (
-        <div className="fixed inset-0 flex bg-zinc-950 font-sans text-gray-100 selection:bg-purple-500/30 overflow-hidden">
+    <ErrorBoundary>
+      <>
+        {!isAuthenticated ? (
+          <LoginPage onLogin={handleLogin} />
+        ) : (
+          <div className="fixed inset-0 flex bg-zinc-950 font-sans text-gray-100 selection:bg-purple-500/30 overflow-hidden">
 
-          {/* API Key Dialog Overlay */}
-          <AnimatePresence>
-            {showApiKeyDialog && (
-              <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />
-            )}
-          </AnimatePresence>
+            {/* API Key Dialog Overlay */}
+            <AnimatePresence>
+              {showApiKeyDialog && (
+                <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />
+              )}
+            </AnimatePresence>
 
-          {/* Custom API Key Input Dialog */}
-          <AnimatePresence>
-            {showApiKeyInputDialog && (
-              <ApiKeyInputDialog
-                onConfirm={handleApiKeyInputConfirm}
-                onCancel={handleApiKeyInputCancel}
+            {/* Custom API Key Input Dialog */}
+            <AnimatePresence>
+              {showApiKeyInputDialog && (
+                <ApiKeyInputDialog
+                  onConfirm={handleApiKeyInputConfirm}
+                  onCancel={handleApiKeyInputCancel}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Premium Modal */}
+            <AnimatePresence>
+              {showPremiumModal && (
+                <PremiumModal
+                  isOpen={showPremiumModal}
+                  onClose={() => setShowPremiumModal(false)}
+                  onPurchase={handlePurchase}
+                  currentUserPlan={currentUserPlan}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Payment History Modal */}
+            <AnimatePresence>
+              {showPaymentHistory && (
+                <PaymentHistoryModal
+                  payments={paymentHistory}
+                  onClose={() => {
+                    setShowPaymentHistory(false);
+                    setActiveTab('gallery');
+                  }}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Atmospheric Background Gradient (Global) */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+              <motion.div
+                animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+                transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-indigo-900/20 rounded-full blur-[150px]"
               />
-            )}
-          </AnimatePresence>
-
-          {/* Premium Modal */}
-          <AnimatePresence>
-            {showPremiumModal && (
-              <PremiumModal
-                isOpen={showPremiumModal}
-                onClose={() => setShowPremiumModal(false)}
-                onPurchase={handlePurchase}
-                currentUserPlan={currentUserPlan}
+              <motion.div
+                animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
+                transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-purple-900/20 rounded-full blur-[150px]"
               />
-            )}
-          </AnimatePresence>
+            </div>
 
-          {/* Payment History Modal */}
-          <AnimatePresence>
-            {showPaymentHistory && (
-              <PaymentHistoryModal
-                payments={paymentHistory}
-                onClose={() => {
-                  setShowPaymentHistory(false);
-                  setActiveTab('gallery');
-                }}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Atmospheric Background Gradient (Global) */}
-          <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-            <motion.div
-              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-indigo-900/20 rounded-full blur-[150px]"
-            />
-            <motion.div
-              animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-              className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-purple-900/20 rounded-full blur-[150px]"
-            />
-          </div>
-
-          {/* LEFT PANEL: Command Center */}
-          <aside className={
-            `${mobileTab === 'create' ? 'flex' : 'hidden'} md:flex
+            {/* LEFT PANEL: Command Center */}
+            <aside className={
+              `${mobileTab === 'create' ? 'flex' : 'hidden'} md:flex
             w-full md:w-[420px] flex-shrink-0 flex-col 
             border-r border-white/5 bg-zinc-900/40 backdrop-blur-xl 
             z-20 relative shadow-2xl
             pb-[80px] md:pb-0
           `}>
-            {/* Logo Header */}
-            <div className="h-20 px-6 flex items-center border-b border-white/5 shrink-0">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.3)] mr-3">
-                <Sparkles className="w-4 h-4 text-white" />
+              {/* Logo Header */}
+              <div className="h-20 px-6 flex items-center border-b border-white/5 shrink-0">
+                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.3)] mr-3">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xl font-bold tracking-tight text-white">
+                    Pixel<span className="text-white/40">Walls</span>
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowPremiumModal(true)}
+                  className="ml-auto flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-amber-500/30"
+                >
+                  <Crown size={16} />
+                  {isPremium ? 'Premium' : 'Go Premium'}
+                </button>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-bold tracking-tight text-white">
-                  Pixel<span className="text-white/40">Walls</span>
-                </span>
+
+              {/* Controls */}
+              <div className="flex-1 overflow-hidden">
+                <GeneratorControls
+                  onGenerate={handleGenerate}
+                  isGenerating={isGenerating}
+                  currentUserPlan={currentUserPlan}
+                  apiKey={geminiApiKey}
+                  prompt={prompt}
+                  onPromptChange={setPrompt}
+                />
               </div>
-              <button
-                onClick={() => setShowPremiumModal(true)}
-                className="ml-auto flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-amber-500/30"
-              >
-                <Crown size={16} />
-                {isPremium ? 'Premium' : 'Go Premium'}
-              </button>
-            </div>
+            </aside>
 
-            {/* Controls */}
-            <div className="flex-1 overflow-hidden">
-              <GeneratorControls
-                onGenerate={handleGenerate}
-                isGenerating={isGenerating}
-                currentUserPlan={currentUserPlan}
-                apiKey={geminiApiKey}
-                prompt={prompt}
-                onPromptChange={setPrompt}
-              />
-            </div>
-          </aside>
-
-          {/* RIGHT PANEL: Gallery Feed */}
-          <main className={
-            `${mobileTab === 'explore' ? 'flex' : 'hidden'} md:flex
+            {/* RIGHT PANEL: Gallery Feed */}
+            <main className={
+              `${mobileTab === 'explore' ? 'flex' : 'hidden'} md:flex
             flex-1 relative flex-col z-10 w-full max-w-full overflow-x-hidden
           `}>
 
-            {/* Floating Header */}
-            <div className="h-20 px-4 md:px-8 flex items-center justify-between shrink-0 bg-gradient-to-b from-zinc-950 via-zinc-950/90 to-transparent z-20 sticky top-0 backdrop-blur-sm pointer-events-none">
-              {/* Left Group */}
-              <div className="flex items-center gap-4 pointer-events-auto w-1/4">
-                <AnimatePresence mode="wait">
-                  <motion.h2
-                    key={activeTab}
-                    initial={{ y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -10, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60 whitespace-nowrap"
-                  >
-                    {activeTab === 'gallery' ? 'Explore' : activeTab === 'favorites' ? 'Favorites' : showPaymentHistory ? 'Payment History' : 'Explore'}
-                  </motion.h2>
-                </AnimatePresence>
-
-                <div className="hidden md:block">
-                  <AnimatePresence>
-                    {isGenerating && (
-                      <motion.div
-                        initial={{ width: 0, opacity: 0, scale: 0.9 }}
-                        animate={{ width: 'auto', opacity: 1, scale: 1 }}
-                        exit={{ width: 0, opacity: 0, scale: 0.9 }}
-                        className="flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 overflow-hidden"
-                      >
-                        <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
-                        <span className="text-xs font-medium text-purple-400 whitespace-nowrap">Generating...</span>
-                      </motion.div>
-                    )}
+              {/* Floating Header */}
+              <div className="h-20 px-4 md:px-8 flex items-center justify-between shrink-0 bg-gradient-to-b from-zinc-950 via-zinc-950/90 to-transparent z-20 sticky top-0 backdrop-blur-sm pointer-events-none">
+                {/* Left Group */}
+                <div className="flex items-center gap-4 pointer-events-auto w-1/4">
+                  <AnimatePresence mode="wait">
+                    <motion.h2
+                      key={activeTab}
+                      initial={{ y: 10, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: -10, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60 whitespace-nowrap"
+                    >
+                      {activeTab === 'gallery' ? 'Explore' : activeTab === 'favorites' ? 'Favorites' : showPaymentHistory ? 'Payment History' : 'Explore'}
+                    </motion.h2>
                   </AnimatePresence>
-                </div>
-              </div>
 
-              {/* Center Group: Navigation Pills */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto hidden xl:block">
-                <div className="flex items-center bg-black/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl relative shadow-2xl shadow-black/50">
-                  {/* Sliding Tab Background */}
-                  <div className="absolute inset-1.5 pointer-events-none">
-                    <motion.div
-                      layoutId="tab-pill"
-                      className="h-full rounded-xl bg-zinc-800 shadow-lg shadow-black/20 border border-white/5"
-                      initial={false}
-                      animate={{
-                        opacity: 1
-                      }}
-                      style={{ width: '20%', display: 'none' }}
-                    />
+                  <div className="hidden md:block">
+                    <AnimatePresence>
+                      {isGenerating && (
+                        <motion.div
+                          initial={{ width: 0, opacity: 0, scale: 0.9 }}
+                          animate={{ width: 'auto', opacity: 1, scale: 1 }}
+                          exit={{ width: 0, opacity: 0, scale: 0.9 }}
+                          className="flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 overflow-hidden"
+                        >
+                          <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
+                          <span className="text-xs font-medium text-purple-400 whitespace-nowrap">Generating...</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* Center Group: Navigation Pills */}
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto hidden xl:block">
+                  <div className="flex items-center bg-black/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl relative shadow-2xl shadow-black/50">
+                    {/* Sliding Tab Background */}
+                    <div className="absolute inset-1.5 pointer-events-none">
+                      <motion.div
+                        layoutId="tab-pill"
+                        className="h-full rounded-xl bg-zinc-800 shadow-lg shadow-black/20 border border-white/5"
+                        initial={false}
+                        animate={{
+                          opacity: 1
+                        }}
+                        style={{ width: '20%', display: 'none' }}
+                      />
+                    </div>
+
+                    {[
+                      { id: 'gallery', label: 'Gallery', icon: LayoutGrid },
+                      { id: 'favorites', label: 'Favorites', icon: Heart },
+                      {
+                        id: 'paymentHistory', label: 'Payments', icon: null, svg: (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                          </svg>
+                        )
+                      },
+                      { id: 'collections', label: 'Collections', icon: Folder },
+                      { id: 'community', label: 'Community', icon: Globe }
+                    ].map((tab) => {
+                      const isActive = (tab.id === 'paymentHistory' && showPaymentHistory) || (activeTab === tab.id && !showPaymentHistory && tab.id !== 'paymentHistory');
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => {
+                            if (tab.id === 'paymentHistory') {
+                              setShowPaymentHistory(true);
+                              setActiveTab('paymentHistory');
+                              setSelectedCategory('all');
+                            } else {
+                              setActiveTab(tab.id as any);
+                              setShowPaymentHistory(false);
+                              if (tab.id === 'collections' || tab.id === 'community') setSelectedCategory('all');
+                            }
+                          }}
+                          className={`relative z-10 flex items-center justify-center space-x-2 px-6 py-2.5 rounded-xl transition-all duration-300 ${isActive ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                          {isActive && (
+                            <motion.div
+                              layoutId="active-nav-pill"
+                              className="absolute inset-0 bg-zinc-800 rounded-xl shadow-lg border border-white/5"
+                              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                              style={{ zIndex: -1 }}
+                            />
+                          )}
+                          {tab.icon ? <tab.icon className={`w-4 h-4 ${isActive ? 'text-purple-400' : ''}`} /> : <span className={isActive ? 'text-purple-400' : ''}>{tab.svg}</span>}
+                          <span className={`text-sm font-medium ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Group: Actions */}
+                <div className="flex items-center justify-end gap-2 pointer-events-auto w-1/4">
+
+                  {/* Fallback Nav for smaller screens (md/lg but not xl) - keeping this for now but simplified */}
+                  <div className="hidden md:flex xl:hidden items-center bg-zinc-900/50 p-1 rounded-lg border border-white/5 mr-2">
+                    <button onClick={() => setActiveTab('gallery')} className={`p-2 rounded-lg ${activeTab === 'gallery' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Gallery"><LayoutGrid className="w-4 h-4" /></button>
+                    <button onClick={() => setActiveTab('favorites')} className={`p-2 rounded-lg ${activeTab === 'favorites' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Favorites"><Heart className="w-4 h-4" /></button>
+                    <button onClick={() => setActiveTab('collections')} className={`p-2 rounded-lg ${activeTab === 'collections' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Collections"><Folder className="w-4 h-4" /></button>
+                    <button onClick={() => setActiveTab('community')} className={`p-2 rounded-lg ${activeTab === 'community' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Community"><Globe className="w-4 h-4" /></button>
                   </div>
 
-                  {[
-                    { id: 'gallery', label: 'Gallery', icon: LayoutGrid },
-                    { id: 'favorites', label: 'Favorites', icon: Heart },
-                    {
-                      id: 'paymentHistory', label: 'Payments', icon: null, svg: (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                        </svg>
-                      )
-                    },
-                    { id: 'collections', label: 'Collections', icon: Folder },
-                    { id: 'community', label: 'Community', icon: Globe }
-                  ].map((tab) => {
-                    const isActive = (tab.id === 'paymentHistory' && showPaymentHistory) || (activeTab === tab.id && !showPaymentHistory && tab.id !== 'paymentHistory');
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => {
-                          if (tab.id === 'paymentHistory') {
-                            setShowPaymentHistory(true);
-                            setActiveTab('paymentHistory');
-                            setSelectedCategory('all');
-                          } else {
-                            setActiveTab(tab.id as any);
-                            setShowPaymentHistory(false);
-                            if (tab.id === 'collections' || tab.id === 'community') setSelectedCategory('all');
-                          }
-                        }}
-                        className={`relative z-10 flex items-center justify-center space-x-2 px-6 py-2.5 rounded-xl transition-all duration-300 ${isActive ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                      >
-                        {isActive && (
-                          <motion.div
-                            layoutId="active-nav-pill"
-                            className="absolute inset-0 bg-zinc-800 rounded-xl shadow-lg border border-white/5"
-                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                            style={{ zIndex: -1 }}
-                          />
-                        )}
-                        {tab.icon ? <tab.icon className={`w-4 h-4 ${isActive ? 'text-purple-400' : ''}`} /> : <span className={isActive ? 'text-purple-400' : ''}>{tab.svg}</span>}
-                        <span className={`text-sm font-medium ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right Group: Actions */}
-              <div className="flex items-center justify-end gap-2 pointer-events-auto w-1/4">
-
-                {/* Fallback Nav for smaller screens (md/lg but not xl) - keeping this for now but simplified */}
-                <div className="hidden md:flex xl:hidden items-center bg-zinc-900/50 p-1 rounded-lg border border-white/5 mr-2">
-                  <button onClick={() => setActiveTab('gallery')} className={`p-2 rounded-lg ${activeTab === 'gallery' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Gallery"><LayoutGrid className="w-4 h-4" /></button>
-                  <button onClick={() => setActiveTab('favorites')} className={`p-2 rounded-lg ${activeTab === 'favorites' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Favorites"><Heart className="w-4 h-4" /></button>
-                  <button onClick={() => setActiveTab('collections')} className={`p-2 rounded-lg ${activeTab === 'collections' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Collections"><Folder className="w-4 h-4" /></button>
-                  <button onClick={() => setActiveTab('community')} className={`p-2 rounded-lg ${activeTab === 'community' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Community"><Globe className="w-4 h-4" /></button>
-                </div>
-
-                {/* Only keep Filter in header if essential, otherwise move to menu. 
+                  {/* Only keep Filter in header if essential, otherwise move to menu. 
                     User requested cleaning up "side drawer" elements which meant these buttons. 
                     I'll keep Filter visible as it's a primary view action, but move everything else (Profile, Admin tools, Premium, Logout) to the drawer.
                     Actually, let's keep it super clean as per premium request.
                 */}
 
-                {/* Category Filter - Only show when on gallery tab */}
-                {activeTab === 'gallery' && (
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowCategoryFilter(!showCategoryFilter)}
-                      className={`flex items-center justify-center p-2.5 rounded-lg transition-all ${showCategoryFilter ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/10 hover:border-white/20'} backdrop-blur-sm`}
-                      title="Filter by category"
-                    >
-                      <Filter className="w-4 h-4" />
-                    </button>
+                  {/* Category Filter - Only show when on gallery tab */}
+                  {activeTab === 'gallery' && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+                        className={`flex items-center justify-center p-2.5 rounded-lg transition-all ${showCategoryFilter ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/10 hover:border-white/20'} backdrop-blur-sm`}
+                        title="Filter by category"
+                      >
+                        <Filter className="w-4 h-4" />
+                      </button>
 
-                    {/* Category Filter Dropdown */}
-                    <AnimatePresence>
-                      {showCategoryFilter && (
-                        <>
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                            transition={{ duration: 0.2 }}
-                            className="absolute right-0 top-12 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
-                          >
-                            <div className="py-2">
-                              {[
-                                { value: 'all', label: 'All Categories' },
-                                { value: 'latest', label: 'Latest' },
-                                { value: 'trending', label: 'Trending' },
-                                { value: 'mountains', label: 'Mountains' },
-                                { value: 'beaches', label: 'Beaches' },
-                                { value: 'forest', label: 'Forest' },
-                                { value: 'city', label: 'City' },
-                                { value: 'space', label: 'Space' },
-                                { value: 'animals', label: 'Animals' },
-                                { value: 'abstract', label: 'Abstract' },
-                                { value: 'fantasy', label: 'Fantasy' }
-                              ].map((category) => (
-                                <button
-                                  key={category.value}
-                                  onClick={() => {
-                                    setSelectedCategory(category.value);
-                                    setShowCategoryFilter(false);
-                                  }}
-                                  className={`w-full text-left px-4 py-2 text-sm transition-colors ${selectedCategory === category.value ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-300 hover:bg-zinc-800/50 hover:text-white'}`}
-                                >
-                                  {category.label}
-                                </button>
-                              ))}
-                            </div>
-                          </motion.div>
+                      {/* Category Filter Dropdown */}
+                      <AnimatePresence>
+                        {showCategoryFilter && (
+                          <>
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                              transition={{ duration: 0.2 }}
+                              className="absolute right-0 top-12 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+                            >
+                              <div className="py-2">
+                                {[
+                                  { value: 'all', label: 'All Categories' },
+                                  { value: 'latest', label: 'Latest' },
+                                  { value: 'trending', label: 'Trending' },
+                                  { value: 'mountains', label: 'Mountains' },
+                                  { value: 'beaches', label: 'Beaches' },
+                                  { value: 'forest', label: 'Forest' },
+                                  { value: 'city', label: 'City' },
+                                  { value: 'space', label: 'Space' },
+                                  { value: 'animals', label: 'Animals' },
+                                  { value: 'abstract', label: 'Abstract' },
+                                  { value: 'fantasy', label: 'Fantasy' }
+                                ].map((category) => (
+                                  <button
+                                    key={category.value}
+                                    onClick={() => {
+                                      setSelectedCategory(category.value);
+                                      setShowCategoryFilter(false);
+                                    }}
+                                    className={`w-full text-left px-4 py-2 text-sm transition-colors ${selectedCategory === category.value ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-300 hover:bg-zinc-800/50 hover:text-white'}`}
+                                  >
+                                    {category.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </motion.div>
 
-                          {/* Click outside to close */}
-                          <div
-                            className="fixed inset-0 z-40"
-                            onClick={() => setShowCategoryFilter(false)}
-                          />
-                        </>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
+                            {/* Click outside to close */}
+                            <div
+                              className="fixed inset-0 z-40"
+                              onClick={() => setShowCategoryFilter(false)}
+                            />
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
 
-                <div className="w-px h-6 bg-white/10 mx-2 hidden md:block"></div>
+                  <div className="w-px h-6 bg-white/10 mx-2 hidden md:block"></div>
 
-                <button
-                  onClick={() => setShowMobileDrawer(true)}
-                  className="flex items-center justify-center p-2.5 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
-                  title="Menu"
-                >
-                  <Menu className="w-5 h-5" />
-                </button>
+                  <button
+                    onClick={() => setShowMobileDrawer(true)}
+                    className="flex items-center justify-center p-2.5 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                    title="Menu"
+                  >
+                    <Menu className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Error Toast */}
+              {/* Error Toast */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="absolute top-24 left-8 right-8 mx-auto max-w-md bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-lg flex items-center justify-center z-30"
+                  >
+                    <span>{error}</span>
+                    <button onClick={() => setError(null)} className="ml-4 text-red-200 hover:text-white underline text-sm">Dismiss</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Grid Area */}
+              <div className="flex-1 w-full overflow-y-auto overflow-x-hidden custom-scrollbar p-4 md:p-8 pt-0 pb-[100px] md:pb-0">
+                {activeTab === 'collections' ? (
+                  <CollectionsManager
+                    onBack={() => setActiveTab('gallery')}
+                    onSelectCollection={(collection) => {
+                      // TODO: Filter gallery by collection
+                      console.log('Selected collection:', collection);
+                      setActiveTab('gallery');
+                    }}
+                  />
+                ) : activeTab === 'community' ? (
+                  <CommunityFeed
+                    onSelectCallback={(wallpaper) => {
+                      setSelectedWallpaper(wallpaper);
+                    }}
+                  />
+                ) : (
+                  <ImageGrid
+                    wallpapers={showOrganizer ? filteredWallpapers : displayedWallpapers}
+                    onSelect={setSelectedWallpaper}
+                    onToggleFavorite={toggleFavorite}
+                    isGenerating={isGenerating}
+                  />
+                )}
+              </div>
+            </main>
+
+            {/* MOBILE NAVIGATION BAR */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-zinc-950/95 backdrop-blur-xl border-t border-white/10 z-40 flex items-center justify-between px-4 pb-4 safe-area-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+              <button
+                onClick={() => setMobileTab('explore')}
+                className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
+              >
+                <div className={`p-1.5 rounded-xl transition-colors ${mobileTab === 'explore' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
+                  <Compass className="w-6 h-6" />
+                </div>
+                <span className={`text-[10px] font-medium ${mobileTab === 'explore' ? 'text-purple-400' : 'text-zinc-500'}`}>Explore</span>
+              </button>
+
+              <button
+                onClick={() => setMobileTab('create')}
+                className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
+              >
+                <div className={`p-1.5 rounded-xl transition-colors ${mobileTab === 'create' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
+                  <PlusCircle className="w-6 h-6" />
+                </div>
+                <span className={`text-[10px] font-medium ${mobileTab === 'create' ? 'text-purple-400' : 'text-zinc-500'}`}>Create</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowPaymentHistory(true);
+                  setActiveTab('paymentHistory');
+                }}
+                className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
+              >
+                <div className={`p-1.5 rounded-xl transition-colors ${showPaymentHistory ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                </div>
+                <span className={`text-[10px] font-medium ${showPaymentHistory ? 'text-purple-400' : 'text-zinc-500'}`}>Payments</span>
+              </button>
+
+              <button
+                onClick={() => setShowMobileDrawer(true)}
+                className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
+              >
+                <div className="p-1.5 rounded-xl transition-colors text-zinc-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </div>
+                <span className="text-[10px] font-medium text-zinc-500">Menu</span>
+              </button>
+            </nav>
+
+            {/* Modal */}
             <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="absolute top-24 left-8 right-8 mx-auto max-w-md bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-lg flex items-center justify-center z-30"
-                >
-                  <span>{error}</span>
-                  <button onClick={() => setError(null)} className="ml-4 text-red-200 hover:text-white underline text-sm">Dismiss</button>
-                </motion.div>
+              {selectedWallpaper && (
+                <ImageModal
+                  key="modal"
+                  wallpaper={selectedWallpaper}
+                  onClose={() => setSelectedWallpaper(null)}
+                  onToggleFavorite={toggleFavorite}
+                  onDelete={deleteWallpaper}
+                  onEdit={handleEditWallpaper}
+                  onShare={handleShareWallpaper}
+                  onRemix={(wallpaper) => {
+                    setSelectedWallpaper(null);
+                    setMobileTab('create'); // For mobile
+                    // If focusing on create tab for desktop, we assume 'create' is default or 'activeTab' is handled by layout
+                    // Actually, 'activeTab' isn't used for 'create' view in current App.tsx structure? 
+                    // Let's check. App.tsx seems to use mobileTab='create' or just main view?
+                    // Ah, the CREATE view is embedded or sidebar?
+                    // Let's assume we need to populate the prompt.
+                    // Function to set prompt is not directly available here in render.
+                    // We need a state for 'prompt' in App.tsx or use a context.
+                    // Checking App.tsx state...
+                    // const [prompt, setPrompt] = useState(''); -- It should be there.
+                    setPrompt(wallpaper.prompt);
+                    // If we want to switch to a 'create' mode if it's separate.
+                    // In desktop, it's always visible on left? No, let's check.
+                    // App structure: Left Panel (Create), Right Panel (Gallery).
+                    // So we just update prompt and maybe scroll to top?
+                  }}
+                />
               )}
             </AnimatePresence>
 
-            {/* Grid Area */}
-            <div className="flex-1 w-full overflow-y-auto overflow-x-hidden custom-scrollbar p-4 md:p-8 pt-0 pb-[100px] md:pb-0">
-              {activeTab === 'collections' ? (
-                <CollectionsManager
-                  onBack={() => setActiveTab('gallery')}
-                  onSelectCollection={(collection) => {
-                    // TODO: Filter gallery by collection
-                    console.log('Selected collection:', collection);
-                    setActiveTab('gallery');
-                  }}
-                />
-              ) : activeTab === 'community' ? (
-                <CommunityFeed
-                  onSelectCallback={(wallpaper) => {
-                    setSelectedWallpaper(wallpaper);
-                  }}
-                />
-              ) : (
-                <ImageGrid
-                  wallpapers={showOrganizer ? filteredWallpapers : displayedWallpapers}
-                  onSelect={setSelectedWallpaper}
-                  onToggleFavorite={toggleFavorite}
-                  isGenerating={isGenerating}
+            {/* Image Editor Modal */}
+            <AnimatePresence>
+              {showEditor && editingWallpaper && (
+                <ImageEditor
+                  wallpaper={editingWallpaper}
+                  onClose={handleCancelEdit}
+                  onSave={handleSaveEditedWallpaper}
                 />
               )}
-            </div>
-          </main>
+            </AnimatePresence>
 
-          {/* MOBILE NAVIGATION BAR */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-zinc-950/95 backdrop-blur-xl border-t border-white/10 z-40 flex items-center justify-between px-4 pb-4 safe-area-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
-            <button
-              onClick={() => setMobileTab('explore')}
-              className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
-            >
-              <div className={`p-1.5 rounded-xl transition-colors ${mobileTab === 'explore' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
-                <Compass className="w-6 h-6" />
-              </div>
-              <span className={`text-[10px] font-medium ${mobileTab === 'explore' ? 'text-purple-400' : 'text-zinc-500'}`}>Explore</span>
-            </button>
+            {/* User Profile Modal */}
+            <AnimatePresence>
+              {showProfile && (
+                <UserProfile
+                  userId={localStorage.getItem('userId') || 'demo-user-id'}
+                  username={username || 'Guest'}
+                  email={localStorage.getItem('username') || 'guest@example.com'}
+                  wallpaperCount={wallpapers.length}
+                  favoriteCount={wallpapers.filter(wp => wp.favorite).length}
+                  onEditProfile={() => { }}
+                  onUploadAvatar={() => { }}
+                  onClose={() => setShowProfile(false)}
+                />
+              )}
+            </AnimatePresence>
 
-            <button
-              onClick={() => setMobileTab('create')}
-              className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
-            >
-              <div className={`p-1.5 rounded-xl transition-colors ${mobileTab === 'create' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
-                <PlusCircle className="w-6 h-6" />
-              </div>
-              <span className={`text-[10px] font-medium ${mobileTab === 'create' ? 'text-purple-400' : 'text-zinc-500'}`}>Create</span>
-            </button>
+            {/* Wallpaper Organizer Modal */}
+            <AnimatePresence>
+              {showOrganizer && (
+                <WallpaperOrganizer
+                  wallpapers={wallpapers}
+                  onTagWallpaper={handleTagWallpaper}
+                  onSearch={handleSearch}
+                  onFilterByTags={handleFilterByTags}
+                  onClose={() => {
+                    setShowOrganizer(false);
+                    // Reset to show all wallpapers when closing organizer
+                    setFilteredWallpapers(wallpapers);
+                    setSearchQuery('');
+                    setSelectedTags([]);
+                  }}
+                />
+              )}
+            </AnimatePresence>
 
-            <button
-              onClick={() => {
-                setShowPaymentHistory(true);
-                setActiveTab('paymentHistory');
+            {/* Wallpaper Share Modal */}
+            <AnimatePresence>
+              {showShare && sharingWallpaper && (
+                <WallpaperShare
+                  wallpaper={sharingWallpaper}
+                  onLike={handleLikeWallpaper}
+                  onShare={() => { }}
+                  onClose={() => setShowShare(false)}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Analytics Dashboard Modal */}
+            <AnimatePresence>
+              {showAnalytics && (
+                <AnalyticsDashboard
+                  wallpapers={wallpapers}
+                  onClose={() => setShowAnalytics(false)}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Premium Features Modal */}
+            <AnimatePresence>
+              {showPremiumFeatures && (
+                <PremiumFeatures
+                  isPremium={isPremium}
+                  onUpgrade={() => setShowPremiumModal(true)}
+                  onClose={() => setShowPremiumFeatures(false)}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Mobile Drawer Menu */}
+            <MobileDrawerMenu
+              isOpen={showMobileDrawer}
+              onClose={() => setShowMobileDrawer(false)}
+              onNavigate={(tab) => {
+                switch (tab) {
+                  case 'explore':
+                    setMobileTab('explore');
+                    break;
+                  case 'favorites':
+                    setMobileTab('gallery');
+                    setActiveTab('favorites');
+                    break;
+                  case 'payment-history':
+                    setShowPaymentHistory(true);
+                    setActiveTab('paymentHistory');
+                    break;
+                  case 'filter':
+                    setShowCategoryFilter(!showCategoryFilter);
+                    break;
+                  case 'profile':
+                    setShowProfile(true);
+                    break;
+                  case 'organizer':
+                    setShowOrganizer(true);
+                    break;
+                  case 'analytics':
+                    setShowAnalytics(true);
+                    break;
+                  case 'premium':
+                    setShowPremiumFeatures(true);
+                    break;
+                  default:
+                    setMobileTab('explore');
+                }
               }}
-              className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
-            >
-              <div className={`p-1.5 rounded-xl transition-colors ${showPaymentHistory ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                </svg>
-              </div>
-              <span className={`text-[10px] font-medium ${showPaymentHistory ? 'text-purple-400' : 'text-zinc-500'}`}>Payments</span>
-            </button>
-
-            <button
-              onClick={() => setShowMobileDrawer(true)}
-              className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
-            >
-              <div className="p-1.5 rounded-xl transition-colors text-zinc-500">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </div>
-              <span className="text-[10px] font-medium text-zinc-500">Menu</span>
-            </button>
-          </nav>
-
-          {/* Modal */}
-          <AnimatePresence>
-            {selectedWallpaper && (
-              <ImageModal
-                key="modal"
-                wallpaper={selectedWallpaper}
-                onClose={() => setSelectedWallpaper(null)}
-                onToggleFavorite={toggleFavorite}
-                onDelete={deleteWallpaper}
-                onEdit={handleEditWallpaper}
-                onShare={handleShareWallpaper}
-                onRemix={(wallpaper) => {
-                  setSelectedWallpaper(null);
-                  setMobileTab('create'); // For mobile
-                  // If focusing on create tab for desktop, we assume 'create' is default or 'activeTab' is handled by layout
-                  // Actually, 'activeTab' isn't used for 'create' view in current App.tsx structure? 
-                  // Let's check. App.tsx seems to use mobileTab='create' or just main view?
-                  // Ah, the CREATE view is embedded or sidebar?
-                  // Let's assume we need to populate the prompt.
-                  // Function to set prompt is not directly available here in render.
-                  // We need a state for 'prompt' in App.tsx or use a context.
-                  // Checking App.tsx state...
-                  // const [prompt, setPrompt] = useState(''); -- It should be there.
-                  setPrompt(wallpaper.prompt);
-                  // If we want to switch to a 'create' mode if it's separate.
-                  // In desktop, it's always visible on left? No, let's check.
-                  // App structure: Left Panel (Create), Right Panel (Gallery).
-                  // So we just update prompt and maybe scroll to top?
-                }}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Image Editor Modal */}
-          <AnimatePresence>
-            {showEditor && editingWallpaper && (
-              <ImageEditor
-                wallpaper={editingWallpaper}
-                onClose={handleCancelEdit}
-                onSave={handleSaveEditedWallpaper}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* User Profile Modal */}
-          <AnimatePresence>
-            {showProfile && (
-              <UserProfile
-                userId={localStorage.getItem('userId') || 'demo-user-id'}
-                username={username || 'Guest'}
-                email={localStorage.getItem('username') || 'guest@example.com'}
-                wallpaperCount={wallpapers.length}
-                favoriteCount={wallpapers.filter(wp => wp.favorite).length}
-                onEditProfile={() => { }}
-                onUploadAvatar={() => { }}
-                onClose={() => setShowProfile(false)}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Wallpaper Organizer Modal */}
-          <AnimatePresence>
-            {showOrganizer && (
-              <WallpaperOrganizer
-                wallpapers={wallpapers}
-                onTagWallpaper={handleTagWallpaper}
-                onSearch={handleSearch}
-                onFilterByTags={handleFilterByTags}
-                onClose={() => {
-                  setShowOrganizer(false);
-                  // Reset to show all wallpapers when closing organizer
-                  setFilteredWallpapers(wallpapers);
-                  setSearchQuery('');
-                  setSelectedTags([]);
-                }}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Wallpaper Share Modal */}
-          <AnimatePresence>
-            {showShare && sharingWallpaper && (
-              <WallpaperShare
-                wallpaper={sharingWallpaper}
-                onLike={handleLikeWallpaper}
-                onShare={() => { }}
-                onClose={() => setShowShare(false)}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Analytics Dashboard Modal */}
-          <AnimatePresence>
-            {showAnalytics && (
-              <AnalyticsDashboard
-                wallpapers={wallpapers}
-                onClose={() => setShowAnalytics(false)}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Premium Features Modal */}
-          <AnimatePresence>
-            {showPremiumFeatures && (
-              <PremiumFeatures
-                isPremium={isPremium}
-                onUpgrade={() => setShowPremiumModal(true)}
-                onClose={() => setShowPremiumFeatures(false)}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Mobile Drawer Menu */}
-          <MobileDrawerMenu
-            isOpen={showMobileDrawer}
-            onClose={() => setShowMobileDrawer(false)}
-            onNavigate={(tab) => {
-              switch (tab) {
-                case 'explore':
-                  setMobileTab('explore');
-                  break;
-                case 'favorites':
-                  setMobileTab('gallery');
-                  setActiveTab('favorites');
-                  break;
-                case 'payment-history':
-                  setShowPaymentHistory(true);
-                  setActiveTab('paymentHistory');
-                  break;
-                case 'filter':
-                  setShowCategoryFilter(!showCategoryFilter);
-                  break;
-                case 'profile':
-                  setShowProfile(true);
-                  break;
-                case 'organizer':
-                  setShowOrganizer(true);
-                  break;
-                case 'analytics':
-                  setShowAnalytics(true);
-                  break;
-                case 'premium':
-                  setShowPremiumFeatures(true);
-                  break;
-                default:
-                  setMobileTab('explore');
-              }
-            }}
-            onLogout={handleLogout}
-            currentUserPlan={currentUserPlan}
-          />
-        </div>
-      )}
-    </>
+              onLogout={handleLogout}
+              currentUserPlan={currentUserPlan}
+            />
+          </div>
+        )}
+      </>
+    </ErrorBoundary>
   );
 };
 
