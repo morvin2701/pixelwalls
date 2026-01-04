@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, RotateCw, Undo2, Redo2, Sun, Contrast, Palette, X } from 'lucide-react';
-import { Wallpaper } from '../types';
+import { Wallpaper, DEVICE_PRESETS, DevicePreset } from '../types';
 
 interface ImageEditorProps {
   wallpaper: Wallpaper;
@@ -16,7 +16,10 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ wallpaper, onClose, onSave })
     rotation: 0,
     flipX: 1,
     flipY: 1,
+    presetId: 'original',
   });
+
+  const [selectedPreset, setSelectedPreset] = useState<DevicePreset>(DEVICE_PRESETS[0]);
 
   const [history, setHistory] = useState<any[]>([filters]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -27,7 +30,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ wallpaper, onClose, onSave })
   const updateFilter = (key: string, value: number | string) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
-    
+
     // Update history
     const newHistory = [...history.slice(0, historyIndex + 1), newFilters];
     setHistory(newHistory);
@@ -59,7 +62,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ wallpaper, onClose, onSave })
       flipX: 1,
       flipY: 1,
     });
-    
+
     const newHistory = [...history, {
       brightness: 100,
       contrast: 100,
@@ -96,33 +99,33 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ wallpaper, onClose, onSave })
       <div className="p-4 border-b border-white/10 flex justify-between items-center">
         <h2 className="text-xl font-bold text-white">Edit Wallpaper</h2>
         <div className="flex space-x-2">
-          <button 
+          <button
             onClick={undo}
             disabled={historyIndex <= 0}
             className="p-2 rounded-lg bg-zinc-800 text-zinc-300 disabled:opacity-50 hover:bg-zinc-700 transition-colors"
           >
             <Undo2 className="w-5 h-5" />
           </button>
-          <button 
+          <button
             onClick={redo}
             disabled={historyIndex >= history.length - 1}
             className="p-2 rounded-lg bg-zinc-800 text-zinc-300 disabled:opacity-50 hover:bg-zinc-700 transition-colors"
           >
             <Redo2 className="w-5 h-5" />
           </button>
-          <button 
+          <button
             onClick={resetFilters}
             className="p-2 rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
           >
             <RotateCw className="w-5 h-5" />
           </button>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
-          <button 
+          <button
             onClick={applyFilters}
             className="p-2 px-4 rounded-lg bg-white text-black font-medium hover:bg-zinc-200 transition-colors"
           >
@@ -146,6 +149,26 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ wallpaper, onClose, onSave })
                 transform: transformString,
               }}
             />
+
+            {/* Crop Overlay */}
+            {selectedPreset.id !== 'original' && (
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+                <div
+                  className="border-2 border-white box-content shadow-[0_0_0_9999px_rgba(0,0,0,0.7)]"
+                  style={{
+                    aspectRatio: `${selectedPreset.aspectRatio}`,
+                    height: selectedPreset.aspectRatio < 1 ? '100%' : 'auto',
+                    width: selectedPreset.aspectRatio >= 1 ? '100%' : 'auto',
+                    maxHeight: '100%',
+                    maxWidth: '100%'
+                  }}
+                >
+                  <div className="absolute top-2 left-2 text-[10px] font-bold bg-black/50 text-white px-1.5 py-0.5 rounded">
+                    {selectedPreset.label}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -235,24 +258,49 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ wallpaper, onClose, onSave })
               <div className="flex space-x-4">
                 <button
                   onClick={() => updateFilter('flipX', filters.flipX === 1 ? -1 : 1)}
-                  className={`flex-1 py-2 rounded-lg border transition-colors ${
-                    filters.flipX === -1 
-                      ? 'bg-white text-black border-white' 
-                      : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'
-                  }`}
+                  className={`flex-1 py-2 rounded-lg border transition-colors ${filters.flipX === -1
+                    ? 'bg-white text-black border-white'
+                    : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'
+                    }`}
                 >
                   Flip X
                 </button>
                 <button
                   onClick={() => updateFilter('flipY', filters.flipY === 1 ? -1 : 1)}
-                  className={`flex-1 py-2 rounded-lg border transition-colors ${
-                    filters.flipY === -1 
-                      ? 'bg-white text-black border-white' 
-                      : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'
-                  }`}
+                  className={`flex-1 py-2 rounded-lg border transition-colors ${filters.flipY === -1
+                    ? 'bg-white text-black border-white'
+                    : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'
+                    }`}
                 >
                   Flip Y
                 </button>
+              </div>
+            </div>
+
+            {/* Preset Selector */}
+            <div className="pt-4 border-t border-white/10">
+              <label className="text-sm font-medium text-zinc-300 mb-2 block">
+                Export Target
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {DEVICE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => {
+                      updateFilter('presetId', preset.id);
+                      setSelectedPreset(preset);
+                    }}
+                    className={`text-xs p-2 rounded-lg border transition-all text-left ${filters.presetId === preset.id
+                      ? 'bg-purple-500/20 border-purple-500 text-purple-300'
+                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                      }`}
+                  >
+                    <div className="font-medium">{preset.label}</div>
+                    {preset.width > 0 && (
+                      <div className="text-[10px] opacity-70">{preset.width}x{preset.height}</div>
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

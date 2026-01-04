@@ -14,13 +14,15 @@ import { WallpaperOrganizer } from './components/WallpaperOrganizer';
 import { WallpaperShare } from './components/WallpaperShare';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { PremiumFeatures } from './components/PremiumFeatures';
+import { CollectionsManager } from './components/CollectionsManager';
 import { ApiKeyDialog } from './components/ApiKeyDialog';
 import { ApiKeyInputDialog } from './components/ApiKeyInputDialog';
 import { PremiumModal } from './components/PremiumModal';
 import { LoginPage } from './components/LoginPage';
 import { PaymentHistoryModal } from './components/PaymentHistoryModal';
+import { CommunityFeed } from './components/CommunityFeed';
 import MobileDrawerMenu from './components/MobileDrawerMenu';
-import { Wallpaper, ViewMode, GenerationParams } from './types';
+import { Wallpaper, ViewMode, GenerationParams, Collection } from './types';
 import { generateWallpaperImage } from './services/geminiService';
 import { useApiKey } from './hooks/useApiKey';
 import { paymentService } from './services/paymentService';
@@ -31,7 +33,7 @@ import { getBackendUrl as getBackendUrlUtil } from './services/apiUtils';
 import { fetchUserWallpapersFromSupabase, saveUserWallpaperToSupabase, updateUserWallpaperInSupabase, deleteUserWallpaperFromSupabase } from './services/userWallpapersService';
 // Import the Supabase setup to ensure storage is configured
 // import './services/supabaseSetup'; // Disabled to prevent initialization issues
-import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown, Filter, User, Tag, BarChart3 } from 'lucide-react';
+import { Sparkles, Heart, LayoutGrid, Compass, PlusCircle, Crown, Filter, User, Tag, BarChart3, Folder, Globe, LogOut, Menu } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Function to get backend URL
@@ -236,8 +238,19 @@ const App: React.FC = () => {
   const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ViewMode>('gallery');
   const [mobileTab, setMobileTab] = useState<'create' | 'explore'>('explore');
+
+  // Prompt State (Lifted from GeneratorControls)
+  const [prompt, setPrompt] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pixelwalls_draft_settings');
+      return (saved ? JSON.parse(saved).prompt : '') || '';
+    } catch (e) {
+      return '';
+    }
+  });
+
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>(INITIAL_WALLPAPERS);
-  
+
   // Debug wallpapers state changes
   useEffect(() => {
     console.log('Wallpapers state updated:', wallpapers.length, 'wallpapers');
@@ -256,13 +269,13 @@ const App: React.FC = () => {
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all'); // Add category filter state
   const [showCategoryFilter, setShowCategoryFilter] = useState(false); // Add category filter dropdown state
-  
+
   const { validateApiKey, setShowApiKeyDialog, showApiKeyDialog, handleApiKeyDialogContinue, requestApiKey } = useApiKey(geminiApiKey);
-  
+
   // Load user plan and payment history from localStorage on mount
   useEffect(() => {
     console.log('Initializing app state...');
-    
+
     // Load current user plan from localStorage
     const savedPlan = localStorage.getItem('currentUserPlan');
     if (savedPlan && (savedPlan === 'base' || savedPlan === 'basic' || savedPlan === 'pro')) {
@@ -270,28 +283,28 @@ const App: React.FC = () => {
       setIsPremium(savedPlan !== 'base');
       console.log('Loaded user plan:', savedPlan);
     }
-    
+
     // Load username from localStorage
     const savedUsername = localStorage.getItem('username');
     if (savedUsername) {
       setUsername(savedUsername);
       console.log('Loaded username:', savedUsername);
     }
-    
+
     // Load API key from localStorage on mount
     const savedApiKey = localStorage.getItem('geminiApiKey');
     if (savedApiKey) {
       setGeminiApiKey(savedApiKey);
       console.log('Loaded API key');
     }
-    
+
     // Load user wallpapers - first check if user is authenticated
     const userId = localStorage.getItem('userId');
     const isAuthenticatedLocal = !!userId; // Check if userId exists
-    
+
     if (isAuthenticatedLocal && userId) {
       console.log('User is authenticated, loading wallpapers for user:', userId);
-      
+
       // First try IndexedDB
       let loadedWallpapers = null;
       if (indexedDBService.isIndexedDBSupported()) {
@@ -326,7 +339,7 @@ const App: React.FC = () => {
       console.log('No authenticated user found, using initial wallpapers');
       setWallpapers(INITIAL_WALLPAPERS);
     }
-    
+
     // Function to load wallpapers from localStorage
     function loadWallpapersFromLocalStorage(userId: string) {
       const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
@@ -335,7 +348,7 @@ const App: React.FC = () => {
           const parsedWallpapers = JSON.parse(savedWallpapers);
           console.log('Loaded wallpapers from localStorage:', parsedWallpapers.length);
           setWallpapers(parsedWallpapers);
-          
+
           // If IndexedDB is supported and we loaded from localStorage, save to IndexedDB
           if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
             indexedDBService.saveUserWallpapers(userId, parsedWallpapers)
@@ -357,14 +370,14 @@ const App: React.FC = () => {
       }
     }
   }, []);
-  
+
   // Fetch user's plan from backend when authenticated
   useEffect(() => {
     if (isAuthenticated) {
       const userId = localStorage.getItem('userId');
       if (userId) {
         fetchUserPlan(userId);
-        
+
         // Also ensure wallpapers are loaded when user authenticates
         // This handles cases where authentication state changes
         if (indexedDBService.isIndexedDBSupported()) {
@@ -422,21 +435,21 @@ const App: React.FC = () => {
   useEffect(() => {
     console.log('Wallpapers changed, triggering save effect');
     console.log('isAuthenticated:', isAuthenticated);
-    
+
     if (isAuthenticated) {
       const userId = localStorage.getItem('userId');
       console.log('User ID from localStorage:', userId);
-      
+
       if (userId) {
         // Save to IndexedDB for offline access
         if (indexedDBService.isIndexedDBSupported()) {
           console.log('IndexedDB is supported, saving wallpapers');
-          
+
           // Save wallpapers to IndexedDB
           indexedDBService.saveUserWallpapers(userId, wallpapers)
             .then(() => {
               console.log('Wallpapers successfully saved to IndexedDB');
-              
+
               // Also save to localStorage as backup
               try {
                 localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(wallpapers));
@@ -447,7 +460,7 @@ const App: React.FC = () => {
             })
             .catch((error) => {
               console.error('Failed to save wallpapers to IndexedDB:', error);
-              
+
               // Fallback to localStorage if IndexedDB fails
               try {
                 console.log('Falling back to localStorage');
@@ -459,7 +472,7 @@ const App: React.FC = () => {
             });
         } else {
           console.log('IndexedDB not supported, falling back to localStorage');
-          
+
           // Fallback to localStorage if IndexedDB is not supported
           try {
             localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(wallpapers));
@@ -471,7 +484,7 @@ const App: React.FC = () => {
       }
     }
   }, [wallpapers, isAuthenticated]);
-  
+
   // Close category filter when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -479,9 +492,9 @@ const App: React.FC = () => {
         // Check if click is outside the filter dropdown
         const filterButton = document.querySelector('[title="Filter by category"]');
         const filterDropdown = document.querySelector('.absolute.right-0.top-12');
-        
-        if (filterButton && !filterButton.contains(event.target) && 
-            filterDropdown && !filterDropdown.contains(event.target)) {
+
+        if (filterButton && !filterButton.contains(event.target) &&
+          filterDropdown && !filterDropdown.contains(event.target)) {
           setShowCategoryFilter(false);
         }
       }
@@ -492,7 +505,7 @@ const App: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showCategoryFilter]);
-  
+
   const fetchUserPlan = async (userId: string) => {
     try {
       const backendUrl = getBackendUrl();
@@ -500,7 +513,7 @@ const App: React.FC = () => {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-      
+
       if (!response.ok) {
         console.error(`Failed to fetch user plan: ${response.status}`);
         // Fall back to localStorage plan
@@ -511,10 +524,10 @@ const App: React.FC = () => {
         }
         return;
       }
-      
+
       const data = await response.json();
       console.log('User plan data:', data);
-      
+
       // Update local state with user's plan
       if (data.currentPlan) {
         const planId = data.currentPlan.planId;
@@ -540,7 +553,7 @@ const App: React.FC = () => {
       }
     }
   };
-  
+
   const fetchUserPaymentHistory = async (userId: string) => {
     try {
       const backendUrl = getBackendUrl();
@@ -548,24 +561,24 @@ const App: React.FC = () => {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-      
+
       // Even if response is not ok, we'll handle it gracefully
       if (!response.ok) {
         console.error(`Failed to fetch user payment history: ${response.status}`);
         setPaymentHistory([]);
         return;
       }
-      
+
       const data = await response.json();
       console.log('User payment history:', data);
-      
+
       // Ensure data is an array
       if (!Array.isArray(data)) {
         console.warn('Payment history data is not an array:', data);
         setPaymentHistory([]);
         return;
       }
-      
+
       // Transform the data to match what the PaymentHistory component expects
       const transformedData = data.map((payment: any) => ({
         id: payment.id || payment.razorpay_payment_id || `payment-${Date.now()}`,
@@ -576,7 +589,7 @@ const App: React.FC = () => {
         date: payment.verifiedAt || payment.createdAt || new Date().toISOString(),
         transactionId: payment.razorpay_payment_id || payment.id
       }));
-      
+
       console.log('Transformed payment history:', transformedData);
       setPaymentHistory(transformedData);
     } catch (error) {
@@ -586,25 +599,25 @@ const App: React.FC = () => {
       setPaymentHistory([]);
     }
   };
-  
+
   const getBackendUrl = () => {
     return getBackendUrlUtil();
   };
-  
+
   const handleApiKeyInputConfirm = (apiKey: string) => {
     setGeminiApiKey(apiKey);
     localStorage.setItem('geminiApiKey', apiKey);
     setShowApiKeyInputDialog(false);
   };
-  
+
   const handleApiKeyInputCancel = () => {
     setShowApiKeyInputDialog(false);
   };
-  
+
   const handleLogin = async (username: string, password: string) => {
     // Validate credentials using the userService
     console.log('Login attempt:', { username, password });
-    
+
     try {
       const result = await userService.loginUser({ username, password });
       if (result.success && result.userId) {
@@ -616,9 +629,9 @@ const App: React.FC = () => {
         // Load user-specific wallpapers
         try {
           console.log('Attempting to load wallpapers for user:', result.userId);
-          
+
           let loadedWallpapers = null;
-          
+
           // First try Supabase
           try {
             console.log('Attempting to load wallpapers from Supabase');
@@ -628,7 +641,7 @@ const App: React.FC = () => {
               console.log('Number of wallpapers loaded from Supabase:', supabaseWallpapers.length);
               setWallpapers(supabaseWallpapers);
               loadedWallpapers = supabaseWallpapers;
-              
+
               // Save to IndexedDB for offline access
               if (indexedDBService.isIndexedDBSupported()) {
                 try {
@@ -638,7 +651,7 @@ const App: React.FC = () => {
                   console.error('Failed to save wallpapers to IndexedDB from Supabase:', saveError);
                 }
               }
-              
+
               // Save to localStorage for fallback
               try {
                 localStorage.setItem(`pixelWalls_${result.userId}`, JSON.stringify(supabaseWallpapers));
@@ -652,7 +665,7 @@ const App: React.FC = () => {
           } catch (supabaseError) {
             console.error('Error loading from Supabase:', supabaseError);
           }
-          
+
           // If no wallpapers loaded from Supabase, try IndexedDB
           if (!loadedWallpapers || loadedWallpapers.length === 0) {
             if (indexedDBService.isIndexedDBSupported()) {
@@ -671,7 +684,7 @@ const App: React.FC = () => {
               }
             }
           }
-          
+
           // If no wallpapers loaded from IndexedDB, try localStorage
           if (!loadedWallpapers || loadedWallpapers.length === 0) {
             console.log('IndexedDB not supported or no data found, falling back to localStorage');
@@ -683,7 +696,7 @@ const App: React.FC = () => {
                 console.log('Parsed wallpapers from localStorage:', parsedWallpapers);
                 console.log('Number of wallpapers loaded from localStorage:', parsedWallpapers.length);
                 setWallpapers(parsedWallpapers);
-                
+
                 // If IndexedDB is supported, also save to IndexedDB for future use
                 if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
                   try {
@@ -783,13 +796,13 @@ const App: React.FC = () => {
 
     setIsGenerating(true);
     setError(null);
-    setActiveTab('gallery'); 
+    setActiveTab('gallery');
     setMobileTab('explore'); // Automatically switch to explore view on mobile to see results
-    
+
     try {
       // We now expect enhancedPrompt in the response
       const { imageBase64, mimeType, enhancedPrompt } = await generateWallpaperImage(params, geminiApiKey || undefined);
-      
+
       // Upload image to Supabase Storage (fallback to base64 if upload fails)
       // Save images in the 'placeholders/generated_images/' folder with PixelWalls naming
       // Get the next image number
@@ -797,16 +810,16 @@ const App: React.FC = () => {
       const nextNumber = existingWallpapers.length + 1;
       const fileName = `placeholders/generated_images/PixelWalls_${nextNumber.toString().padStart(2, '0')}.png`;
       const imageData = `data:${mimeType};base64,${imageBase64}`;
-      
+
       console.log('Attempting to upload image to Supabase:', { fileName, mimeType, imageDataLength: imageData.length });
       const uploadResult = await uploadImageToSupabase(imageData, fileName);
       console.log('Upload result:', uploadResult);
-      
+
       // Log if we're using the fallback
       if (!uploadResult.url) {
         console.warn('Using base64 fallback instead of Supabase URL');
       }
-      
+
       let imageUrl = `data:${mimeType};base64,${imageBase64}`;
       if (uploadResult.success && uploadResult.url && uploadResult.url.trim() !== '') {
         imageUrl = uploadResult.url;
@@ -826,19 +839,19 @@ const App: React.FC = () => {
         aspectRatio: params.aspectRatio,
         createdAt: Date.now(),
         favorite: false,
-        category: determineCategory(enhancedPrompt)
+        category: determineCategory(enhancedPrompt) as any // Cast to any to bypass strict type check for now or update determineCategory return type
       };
-      
+
       console.log('Creating new wallpaper with URL:', { imageUrl, isSupabaseUrl: imageUrl.startsWith('http') });
 
       // Artificial delay to let the skeleton animation play a bit longer for better feel
       await new Promise(resolve => setTimeout(resolve, 500));
 
       setWallpapers((prev) => [newWallpaper, ...prev]);
-      
+
       // Clear the prompt input after successful generation
       clearPrompt();
-      
+
       // Save to Supabase
       const userId = localStorage.getItem('userId');
       if (userId) {
@@ -870,18 +883,18 @@ const App: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       const errorMessage = err.message || String(err);
-      
+
       // 2. Check for server-side errors indicating missing access/billing
       if (
-        errorMessage.includes('Requested entity was not found') || 
+        errorMessage.includes('Requested entity was not found') ||
         errorMessage.includes('API_KEY_INVALID') ||
         errorMessage.includes('API key not valid') ||
         errorMessage.toLowerCase().includes('permission denied')
       ) {
-         // Re-trigger dialog if the key was rejected by the backend
-         setShowApiKeyInputDialog(true);
-         // Stop here, do not show the generic error toast
-         return; 
+        // Re-trigger dialog if the key was rejected by the backend
+        setShowApiKeyInputDialog(true);
+        // Stop here, do not show the generic error toast
+        return;
       }
 
       setError(errorMessage || 'Failed to generate wallpaper. Please try again.');
@@ -893,7 +906,7 @@ const App: React.FC = () => {
   // Function to determine category based on prompt content
   const determineCategory = (prompt: string): string => {
     const lowerPrompt = prompt.toLowerCase();
-    
+
     // Define category keywords
     const categories: Record<string, string[]> = {
       'mountains': ['mountain', 'mountains', 'peak', 'peaks', 'summit', 'alps', 'rocky', 'himalayas', 'ridge'],
@@ -906,24 +919,24 @@ const App: React.FC = () => {
       'fantasy': ['fantasy', 'magic', 'mythical', 'dragon', 'wizard', 'castle', 'medieval'],
       'trending': ['trending', 'popular', 'viral', 'modern', 'contemporary', 'latest']
     };
-    
+
     // Check for matches
     for (const [category, keywords] of Object.entries(categories)) {
       if (keywords.some(keyword => lowerPrompt.includes(keyword))) {
         return category;
       }
     }
-    
+
     // Default to 'latest' if no specific category is found
     return 'latest';
   };
 
   const toggleFavorite = useCallback((id: string) => {
     setWallpapers(prev => {
-      const updatedWallpapers = prev.map(wp => 
+      const updatedWallpapers = prev.map(wp =>
         wp.id === id ? { ...wp, favorite: !wp.favorite } : wp
       );
-      
+
       // Update in Supabase
       const userId = localStorage.getItem('userId');
       if (userId) {
@@ -942,19 +955,19 @@ const App: React.FC = () => {
             });
         }
       }
-      
+
       return updatedWallpapers;
     });
-    
+
     if (selectedWallpaper && selectedWallpaper.id === id) {
-        setSelectedWallpaper(prev => prev ? {...prev, favorite: !prev.favorite} : null);
+      setSelectedWallpaper(prev => prev ? { ...prev, favorite: !prev.favorite } : null);
     }
   }, [selectedWallpaper]);
-  
+
   const deleteWallpaper = useCallback(async (id: string) => {
     setWallpapers(prev => {
       const updatedWallpapers = prev.filter(wp => wp.id !== id);
-      
+
       // Delete from Supabase
       const userId = localStorage.getItem('userId');
       if (userId) {
@@ -970,7 +983,7 @@ const App: React.FC = () => {
             console.error('Error deleting wallpaper from Supabase:', error);
           });
       }
-      
+
       // Save to IndexedDB if supported
       if (indexedDBService.isIndexedDBSupported()) {
         const userId = localStorage.getItem('userId');
@@ -981,7 +994,7 @@ const App: React.FC = () => {
             })
             .catch((error) => {
               console.error('Failed to save wallpapers to IndexedDB after deletion:', error);
-              
+
               // Fallback to localStorage
               try {
                 localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(updatedWallpapers));
@@ -1003,25 +1016,25 @@ const App: React.FC = () => {
           }
         }
       }
-      
+
       return updatedWallpapers;
     });
   }, []);
-  
+
   const [showEditor, setShowEditor] = useState(false);
   const [editingWallpaper, setEditingWallpaper] = useState<Wallpaper | null>(null);
-  
+
   const handleEditWallpaper = useCallback((wallpaper: Wallpaper) => {
     setEditingWallpaper(wallpaper);
     setShowEditor(true);
   }, []);
-  
+
   const handleSaveEditedWallpaper = useCallback(async (editedWallpaper: Wallpaper) => {
     setWallpapers(prev => {
-      const updatedWallpapers = prev.map(wp => 
+      const updatedWallpapers = prev.map(wp =>
         wp.id === editedWallpaper.id ? editedWallpaper : wp
       );
-      
+
       // Update in Supabase
       const userId = localStorage.getItem('userId');
       if (userId) {
@@ -1037,7 +1050,7 @@ const App: React.FC = () => {
             console.error('Error updating wallpaper in Supabase:', error);
           });
       }
-      
+
       // Save to IndexedDB if supported
       if (indexedDBService.isIndexedDBSupported()) {
         const userId = localStorage.getItem('userId');
@@ -1048,7 +1061,7 @@ const App: React.FC = () => {
             })
             .catch((error) => {
               console.error('Failed to save edited wallpapers to IndexedDB:', error);
-              
+
               // Fallback to localStorage
               try {
                 localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(updatedWallpapers));
@@ -1070,35 +1083,35 @@ const App: React.FC = () => {
           }
         }
       }
-      
+
       return updatedWallpapers;
     });
-    
+
     setShowEditor(false);
     setEditingWallpaper(null);
   }, []);
-  
+
   const handleCancelEdit = useCallback(() => {
     setShowEditor(false);
     setEditingWallpaper(null);
   }, []);
-  
+
   // State for user profile
   const [showProfile, setShowProfile] = useState(false);
-  
+
   // State for wallpaper organizer
   const [showOrganizer, setShowOrganizer] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredWallpapers, setFilteredWallpapers] = useState<Wallpaper[]>(wallpapers);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  
+
   // Function to tag a wallpaper
   const handleTagWallpaper = useCallback((id: string, tags: string[]) => {
     setWallpapers(prev => {
-      const updatedWallpapers = prev.map(wp => 
+      const updatedWallpapers = prev.map(wp =>
         wp.id === id ? { ...wp, tags } : wp
       );
-      
+
       // Update in Supabase
       const userId = localStorage.getItem('userId');
       if (userId) {
@@ -1117,7 +1130,7 @@ const App: React.FC = () => {
             });
         }
       }
-      
+
       // Save to IndexedDB if supported
       if (indexedDBService.isIndexedDBSupported()) {
         const userId = localStorage.getItem('userId');
@@ -1128,7 +1141,7 @@ const App: React.FC = () => {
             })
             .catch((error) => {
               console.error('Failed to save wallpapers to IndexedDB after tagging:', error);
-              
+
               // Fallback to localStorage
               try {
                 localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(updatedWallpapers));
@@ -1150,67 +1163,67 @@ const App: React.FC = () => {
           }
         }
       }
-      
+
       return updatedWallpapers;
     });
   }, []);
-  
+
   // Function to search wallpapers
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
-    
+
     if (!query.trim()) {
       setFilteredWallpapers(wallpapers);
       return;
     }
-    
-    const filtered = wallpapers.filter(wp => 
+
+    const filtered = wallpapers.filter(wp =>
       wp.prompt.toLowerCase().includes(query.toLowerCase()) ||
       (wp.tags && wp.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
     );
-    
+
     setFilteredWallpapers(filtered);
   }, [wallpapers]);
-  
+
   // Function to filter by tags
   const handleFilterByTags = useCallback((tags: string[]) => {
     setSelectedTags(tags);
-    
+
     if (tags.length === 0) {
       setFilteredWallpapers(wallpapers);
       return;
     }
-    
-    const filtered = wallpapers.filter(wp => 
+
+    const filtered = wallpapers.filter(wp =>
       wp.tags && tags.every(tag => wp.tags?.includes(tag))
     );
-    
+
     setFilteredWallpapers(filtered);
   }, [wallpapers]);
-  
+
   // State for wallpaper sharing
   const [showShare, setShowShare] = useState(false);
   const [sharingWallpaper, setSharingWallpaper] = useState<Wallpaper | null>(null);
-  
+
   // Function to handle wallpaper sharing
   const handleShareWallpaper = useCallback((wallpaper: Wallpaper) => {
     setSharingWallpaper(wallpaper);
     setShowShare(true);
   }, []);
-  
+
   // Function to handle like
   const handleLikeWallpaper = useCallback((id: string) => {
     // In a real implementation, this would update the like count on the server
     // For now, we'll just toggle the favorite status
     toggleFavorite(id);
   }, [toggleFavorite]);
-  
+
   // State for analytics dashboard
   const [showAnalytics, setShowAnalytics] = useState(false);
-  
+
   // State for premium features
   const [showPremiumFeatures, setShowPremiumFeatures] = useState(false);
-  
+
   // State for mobile drawer menu
   const [showMobileDrawer, setShowMobileDrawer] = useState(false);
 
@@ -1220,7 +1233,7 @@ const App: React.FC = () => {
     console.log('Current window location:', window.location.href);
     console.log('Current hostname:', window.location.hostname);
     console.log('Current port:', window.location.port);
-    
+
     // Handle the free base plan
     if (planId === 'base') {
       // For the free plan, we just close the modal and show a message
@@ -1240,28 +1253,28 @@ const App: React.FC = () => {
         alert('User not properly authenticated. Please log in again.');
         return;
       }
-      
+
       console.log('Creating order for user:', userId);
       // Create order through backend, passing the userId
       const orderData = await paymentService.createOrder({ planId, userId: userId });
-      
+
       console.log('Order data received from backend:', orderData);
-      
+
       // Validate that we received a valid order ID
       if (!orderData.orderId) {
         console.error('Invalid order data received from backend:', orderData);
         alert('Failed to create payment order. Please try again.');
         return;
       }
-      
+
       // Prepare Razorpay options with explicit hardcoded values
       const razorpayOptions = {
         key: 'rzp_test_RkFCO2cOtggjtn',
         amount: planId === 'pro' ? 100000 : 30000, // ₹1000 for pro, ₹300 for basic
         currency: 'INR',
         name: 'PixelWalls',
-        description: planId === 'pro' 
-          ? 'Pro Premium - Unlock all premium features - monthly subscription (₹1000)' 
+        description: planId === 'pro'
+          ? 'Pro Premium - Unlock all premium features - monthly subscription (₹1000)'
           : 'Basic Premium - Unlock premium wallpapers - monthly subscription (₹300)',
         order_id: orderData.orderId,
         prefill: {
@@ -1279,27 +1292,27 @@ const App: React.FC = () => {
           color: '#6366f1'
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             console.log('Payment dialog closed by user');
             // Refresh payment history even if user closes the dialog
             fetchUserPaymentHistory(userId);
           }
         }
       };
-      
+
       console.log('FINAL RAZORPAY OPTIONS BEING SENT:', JSON.stringify(razorpayOptions, null, 2));
       console.log('AMOUNT IN PAISE:', razorpayOptions.amount);
       console.log('AMOUNT IN RUPEES:', razorpayOptions.amount / 100);
-      
+
       console.log('=== INITIATING PAYMENT ===');
       console.log('Razorpay options:', razorpayOptions);
       console.log('Backend URL for payment:', getBackendUrl());
-      
+
       // Initialize payment
       const paymentSuccess = await paymentService.initiatePayment(razorpayOptions, getBackendUrl());
-      
+
       console.log('Payment result:', paymentSuccess);
-      
+
       if (paymentSuccess) {
         setIsPremium(true);
         setShowPremiumModal(false);
@@ -1322,9 +1335,9 @@ const App: React.FC = () => {
       console.error('Error name:', error.name);
       console.error('Error message:', error.message);
       console.error('Stack trace:', error.stack);
-      
+
       let errorMessage = 'An unknown error occurred. Please try again.';
-      
+
       // Handle specific Razorpay gateway errors
       if (error.message && error.message.includes('Payment processing failed due to error at bank or wallet gateway')) {
         errorMessage = 'Payment processing failed at the bank or wallet level. This could be due to:\n\n1. Insufficient funds\n2. Card declined\n3. Invalid card details\n4. Expired card\n5. Network issues\n\nPlease check your payment details and try again.';
@@ -1341,10 +1354,10 @@ const App: React.FC = () => {
       } else {
         errorMessage = `Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`;
       }
-      
+
       console.error('Displaying error to user:', errorMessage);
       alert(errorMessage);
-      
+
       // Refresh payment history to show the failed transaction
       const userId = localStorage.getItem('userId');
       if (userId) {
@@ -1353,10 +1366,10 @@ const App: React.FC = () => {
     }
   };
 
-  const displayedWallpapers = activeTab === 'favorites' 
-    ? wallpapers.filter(w => w.favorite) 
-    : selectedCategory === 'all' 
-      ? wallpapers 
+  const displayedWallpapers = activeTab === 'favorites'
+    ? wallpapers.filter(w => w.favorite)
+    : selectedCategory === 'all'
+      ? wallpapers
       : wallpapers.filter(w => w.category === selectedCategory);
 
   return (
@@ -1365,28 +1378,28 @@ const App: React.FC = () => {
         <LoginPage onLogin={handleLogin} />
       ) : (
         <div className="fixed inset-0 flex bg-zinc-950 font-sans text-gray-100 selection:bg-purple-500/30 overflow-hidden">
-          
+
           {/* API Key Dialog Overlay */}
           <AnimatePresence>
             {showApiKeyDialog && (
               <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />
             )}
           </AnimatePresence>
-          
+
           {/* Custom API Key Input Dialog */}
           <AnimatePresence>
             {showApiKeyInputDialog && (
-              <ApiKeyInputDialog 
+              <ApiKeyInputDialog
                 onConfirm={handleApiKeyInputConfirm}
                 onCancel={handleApiKeyInputCancel}
               />
             )}
           </AnimatePresence>
-          
+
           {/* Premium Modal */}
           <AnimatePresence>
             {showPremiumModal && (
-              <PremiumModal 
+              <PremiumModal
                 isOpen={showPremiumModal}
                 onClose={() => setShowPremiumModal(false)}
                 onPurchase={handlePurchase}
@@ -1394,31 +1407,31 @@ const App: React.FC = () => {
               />
             )}
           </AnimatePresence>
-          
+
           {/* Payment History Modal */}
           <AnimatePresence>
             {showPaymentHistory && (
-              <PaymentHistoryModal 
-                payments={paymentHistory} 
+              <PaymentHistoryModal
+                payments={paymentHistory}
                 onClose={() => {
                   setShowPaymentHistory(false);
                   setActiveTab('gallery');
-                }} 
+                }}
               />
             )}
           </AnimatePresence>
 
           {/* Atmospheric Background Gradient (Global) */}
           <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-            <motion.div 
-              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }} 
+            <motion.div
+              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
               transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-indigo-900/20 rounded-full blur-[150px]" 
+              className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-indigo-900/20 rounded-full blur-[150px]"
             />
-            <motion.div 
-              animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }} 
+            <motion.div
+              animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
               transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-              className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-purple-900/20 rounded-full blur-[150px]" 
+              className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-purple-900/20 rounded-full blur-[150px]"
             />
           </div>
 
@@ -1440,7 +1453,7 @@ const App: React.FC = () => {
                   Pixel<span className="text-white/40">Walls</span>
                 </span>
               </div>
-              <button 
+              <button
                 onClick={() => setShowPremiumModal(true)}
                 className="ml-auto flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-amber-500/30"
               >
@@ -1451,7 +1464,14 @@ const App: React.FC = () => {
 
             {/* Controls */}
             <div className="flex-1 overflow-hidden">
-              <GeneratorControls onGenerate={handleGenerate} isGenerating={isGenerating} currentUserPlan={currentUserPlan} />
+              <GeneratorControls
+                onGenerate={handleGenerate}
+                isGenerating={isGenerating}
+                currentUserPlan={currentUserPlan}
+                apiKey={geminiApiKey}
+                prompt={prompt}
+                onPromptChange={setPrompt}
+              />
             </div>
           </aside>
 
@@ -1460,98 +1480,136 @@ const App: React.FC = () => {
             `${mobileTab === 'explore' ? 'flex' : 'hidden'} md:flex
             flex-1 relative flex-col z-10 w-full max-w-full overflow-x-hidden
           `}>
-            
+
             {/* Floating Header */}
-            <div className="h-20 px-4 md:px-8 flex items-center justify-between shrink-0 bg-gradient-to-b from-zinc-950 via-zinc-950/90 to-transparent z-20">
-              <div className="flex items-center gap-4">
+            <div className="h-20 px-4 md:px-8 flex items-center justify-between shrink-0 bg-gradient-to-b from-zinc-950 via-zinc-950/90 to-transparent z-20 sticky top-0 backdrop-blur-sm pointer-events-none">
+              {/* Left Group */}
+              <div className="flex items-center gap-4 pointer-events-auto w-1/4">
                 <AnimatePresence mode="wait">
-                  <motion.h2 
+                  <motion.h2
                     key={activeTab}
                     initial={{ y: 10, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: -10, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60"
+                    className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60 whitespace-nowrap"
                   >
                     {activeTab === 'gallery' ? 'Explore' : activeTab === 'favorites' ? 'Favorites' : showPaymentHistory ? 'Payment History' : 'Explore'}
                   </motion.h2>
                 </AnimatePresence>
-                
+
                 <div className="hidden md:block">
                   <AnimatePresence>
                     {isGenerating && (
-                      <motion.div 
+                      <motion.div
                         initial={{ width: 0, opacity: 0, scale: 0.9 }}
                         animate={{ width: 'auto', opacity: 1, scale: 1 }}
                         exit={{ width: 0, opacity: 0, scale: 0.9 }}
                         className="flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 overflow-hidden"
                       >
                         <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
-                        <span className="text-xs font-medium text-purple-400 whitespace-nowrap">Creating masterpiece...</span>
+                        <span className="text-xs font-medium text-purple-400 whitespace-nowrap">Generating...</span>
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
               </div>
 
-              <div className="hidden md:flex items-center space-x-2">
-                <div className="flex items-center bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-sm relative">
-                  {/* Sliding Tab Background - only for gallery and favorites, not payments */}
-                  <motion.div 
-                    className="absolute top-1 bottom-1 rounded-lg bg-zinc-700 shadow-sm z-0"
-                    layoutId="tab-background"
-                    initial={false}
-                    animate={{
-                      left: activeTab === 'gallery' ? 4 : 'calc(33% + 2px)',
-                      width: 'calc(33% - 6px)',
-                    }}
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
+              {/* Center Group: Navigation Pills */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto hidden xl:block">
+                <div className="flex items-center bg-black/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl relative shadow-2xl shadow-black/50">
+                  {/* Sliding Tab Background */}
+                  <div className="absolute inset-1.5 pointer-events-none">
+                    <motion.div
+                      layoutId="tab-pill"
+                      className="h-full rounded-xl bg-zinc-800 shadow-lg shadow-black/20 border border-white/5"
+                      initial={false}
+                      animate={{
+                        opacity: 1
+                      }}
+                      style={{ width: '20%', display: 'none' }}
+                    />
+                  </div>
 
-                  <button 
-                    onClick={() => setActiveTab('gallery')}
-                    className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'gallery' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                    <span className="text-sm font-medium hidden md:inline">Gallery</span>
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('favorites')}
-                    className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'favorites' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                  >
-                    <Heart className="w-4 h-4" />
-                    <span className="text-sm font-medium hidden md:inline">Favorites</span>
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setShowPaymentHistory(true);
-                      setActiveTab('paymentHistory');
-                    }}
-                    className={`relative z-10 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${showPaymentHistory ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                    </svg>
-                    <span className="text-sm font-medium hidden md:inline">Payments</span>
-                  </button>
+                  {[
+                    { id: 'gallery', label: 'Gallery', icon: LayoutGrid },
+                    { id: 'favorites', label: 'Favorites', icon: Heart },
+                    {
+                      id: 'paymentHistory', label: 'Payments', icon: null, svg: (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                      )
+                    },
+                    { id: 'collections', label: 'Collections', icon: Folder },
+                    { id: 'community', label: 'Community', icon: Globe }
+                  ].map((tab) => {
+                    const isActive = (tab.id === 'paymentHistory' && showPaymentHistory) || (activeTab === tab.id && !showPaymentHistory && tab.id !== 'paymentHistory');
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          if (tab.id === 'paymentHistory') {
+                            setShowPaymentHistory(true);
+                            setActiveTab('paymentHistory');
+                            setSelectedCategory('all');
+                          } else {
+                            setActiveTab(tab.id as any);
+                            setShowPaymentHistory(false);
+                            if (tab.id === 'collections' || tab.id === 'community') setSelectedCategory('all');
+                          }
+                        }}
+                        className={`relative z-10 flex items-center justify-center space-x-2 px-6 py-2.5 rounded-xl transition-all duration-300 ${isActive ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="active-nav-pill"
+                            className="absolute inset-0 bg-zinc-800 rounded-xl shadow-lg border border-white/5"
+                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            style={{ zIndex: -1 }}
+                          />
+                        )}
+                        {tab.icon ? <tab.icon className={`w-4 h-4 ${isActive ? 'text-purple-400' : ''}`} /> : <span className={isActive ? 'text-purple-400' : ''}>{tab.svg}</span>}
+                        <span className={`text-sm font-medium ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                
+              </div>
+
+              {/* Right Group: Actions */}
+              <div className="flex items-center justify-end gap-2 pointer-events-auto w-1/4">
+
+                {/* Fallback Nav for smaller screens (md/lg but not xl) - keeping this for now but simplified */}
+                <div className="hidden md:flex xl:hidden items-center bg-zinc-900/50 p-1 rounded-lg border border-white/5 mr-2">
+                  <button onClick={() => setActiveTab('gallery')} className={`p-2 rounded-lg ${activeTab === 'gallery' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Gallery"><LayoutGrid className="w-4 h-4" /></button>
+                  <button onClick={() => setActiveTab('favorites')} className={`p-2 rounded-lg ${activeTab === 'favorites' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Favorites"><Heart className="w-4 h-4" /></button>
+                  <button onClick={() => setActiveTab('collections')} className={`p-2 rounded-lg ${activeTab === 'collections' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Collections"><Folder className="w-4 h-4" /></button>
+                  <button onClick={() => setActiveTab('community')} className={`p-2 rounded-lg ${activeTab === 'community' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`} title="Community"><Globe className="w-4 h-4" /></button>
+                </div>
+
+                {/* Only keep Filter in header if essential, otherwise move to menu. 
+                    User requested cleaning up "side drawer" elements which meant these buttons. 
+                    I'll keep Filter visible as it's a primary view action, but move everything else (Profile, Admin tools, Premium, Logout) to the drawer.
+                    Actually, let's keep it super clean as per premium request.
+                */}
+
                 {/* Category Filter - Only show when on gallery tab */}
                 {activeTab === 'gallery' && (
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={() => setShowCategoryFilter(!showCategoryFilter)}
-                      className={`flex items-center justify-center p-2 rounded-lg transition-all ${showCategoryFilter ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/10 hover:border-white/20'} backdrop-blur-sm`}
+                      className={`flex items-center justify-center p-2.5 rounded-lg transition-all ${showCategoryFilter ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-white/10 hover:border-white/20'} backdrop-blur-sm`}
                       title="Filter by category"
                     >
-                      <Filter className="w-5 h-5" />
+                      <Filter className="w-4 h-4" />
                     </button>
-                    
+
                     {/* Category Filter Dropdown */}
                     <AnimatePresence>
                       {showCategoryFilter && (
                         <>
-                          <motion.div 
+                          <motion.div
                             initial={{ opacity: 0, scale: 0.9, y: -10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: -10 }}
@@ -1585,10 +1643,10 @@ const App: React.FC = () => {
                               ))}
                             </div>
                           </motion.div>
-                          
+
                           {/* Click outside to close */}
-                          <div 
-                            className="fixed inset-0 z-40" 
+                          <div
+                            className="fixed inset-0 z-40"
                             onClick={() => setShowCategoryFilter(false)}
                           />
                         </>
@@ -1596,40 +1654,15 @@ const App: React.FC = () => {
                     </AnimatePresence>
                   </div>
                 )}
-                
-                <button 
-                  onClick={() => setShowProfile(true)}
-                  className="flex items-center justify-center p-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+
+                <div className="w-px h-6 bg-white/10 mx-2 hidden md:block"></div>
+
+                <button
+                  onClick={() => setShowMobileDrawer(true)}
+                  className="flex items-center justify-center p-2.5 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                  title="Menu"
                 >
-                  <User className="w-5 h-5" />
-                </button>
-                
-                <button 
-                  onClick={() => setShowOrganizer(true)}
-                  className="flex items-center justify-center p-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  <Tag className="w-5 h-5" />
-                </button>
-                
-                <button 
-                  onClick={() => setShowAnalytics(true)}
-                  className="flex items-center justify-center p-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  <BarChart3 className="w-5 h-5" />
-                </button>
-                
-                <button 
-                  onClick={() => setShowPremiumFeatures(true)}
-                  className="flex items-center justify-center p-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  <Crown className="w-5 h-5" />
-                </button>
-                
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center justify-center px-4 py-2 rounded-lg bg-zinc-900/80 border border-white/10 backdrop-blur-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  <span className="text-sm font-medium">Logout</span>
+                  <Menu className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -1637,7 +1670,7 @@ const App: React.FC = () => {
             {/* Error Toast */}
             <AnimatePresence>
               {error && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
@@ -1651,18 +1684,35 @@ const App: React.FC = () => {
 
             {/* Grid Area */}
             <div className="flex-1 w-full overflow-y-auto overflow-x-hidden custom-scrollbar p-4 md:p-8 pt-0 pb-[100px] md:pb-0">
-              <ImageGrid 
-                wallpapers={showOrganizer ? filteredWallpapers : displayedWallpapers} 
-                onSelect={setSelectedWallpaper} 
-                onToggleFavorite={toggleFavorite}
-                isGenerating={isGenerating}
-              />
+              {activeTab === 'collections' ? (
+                <CollectionsManager
+                  onBack={() => setActiveTab('gallery')}
+                  onSelectCollection={(collection) => {
+                    // TODO: Filter gallery by collection
+                    console.log('Selected collection:', collection);
+                    setActiveTab('gallery');
+                  }}
+                />
+              ) : activeTab === 'community' ? (
+                <CommunityFeed
+                  onSelectCallback={(wallpaper) => {
+                    setSelectedWallpaper(wallpaper);
+                  }}
+                />
+              ) : (
+                <ImageGrid
+                  wallpapers={showOrganizer ? filteredWallpapers : displayedWallpapers}
+                  onSelect={setSelectedWallpaper}
+                  onToggleFavorite={toggleFavorite}
+                  isGenerating={isGenerating}
+                />
+              )}
             </div>
           </main>
 
           {/* MOBILE NAVIGATION BAR */}
           <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-zinc-950/95 backdrop-blur-xl border-t border-white/10 z-40 flex items-center justify-between px-4 pb-4 safe-area-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
-            <button 
+            <button
               onClick={() => setMobileTab('explore')}
               className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
             >
@@ -1671,8 +1721,8 @@ const App: React.FC = () => {
               </div>
               <span className={`text-[10px] font-medium ${mobileTab === 'explore' ? 'text-purple-400' : 'text-zinc-500'}`}>Explore</span>
             </button>
-            
-            <button 
+
+            <button
               onClick={() => setMobileTab('create')}
               className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
             >
@@ -1681,8 +1731,8 @@ const App: React.FC = () => {
               </div>
               <span className={`text-[10px] font-medium ${mobileTab === 'create' ? 'text-purple-400' : 'text-zinc-500'}`}>Create</span>
             </button>
-            
-            <button 
+
+            <button
               onClick={() => {
                 setShowPaymentHistory(true);
                 setActiveTab('paymentHistory');
@@ -1691,13 +1741,13 @@ const App: React.FC = () => {
             >
               <div className={`p-1.5 rounded-xl transition-colors ${showPaymentHistory ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                 </svg>
               </div>
               <span className={`text-[10px] font-medium ${showPaymentHistory ? 'text-purple-400' : 'text-zinc-500'}`}>Payments</span>
             </button>
-            
-            <button 
+
+            <button
               onClick={() => setShowMobileDrawer(true)}
               className="flex flex-col items-center justify-center w-1/4 h-full space-y-1.5 active:scale-95 transition-transform"
             >
@@ -1713,18 +1763,36 @@ const App: React.FC = () => {
           {/* Modal */}
           <AnimatePresence>
             {selectedWallpaper && (
-              <ImageModal 
+              <ImageModal
                 key="modal"
-                wallpaper={selectedWallpaper} 
+                wallpaper={selectedWallpaper}
                 onClose={() => setSelectedWallpaper(null)}
                 onToggleFavorite={toggleFavorite}
                 onDelete={deleteWallpaper}
                 onEdit={handleEditWallpaper}
                 onShare={handleShareWallpaper}
+                onRemix={(wallpaper) => {
+                  setSelectedWallpaper(null);
+                  setMobileTab('create'); // For mobile
+                  // If focusing on create tab for desktop, we assume 'create' is default or 'activeTab' is handled by layout
+                  // Actually, 'activeTab' isn't used for 'create' view in current App.tsx structure? 
+                  // Let's check. App.tsx seems to use mobileTab='create' or just main view?
+                  // Ah, the CREATE view is embedded or sidebar?
+                  // Let's assume we need to populate the prompt.
+                  // Function to set prompt is not directly available here in render.
+                  // We need a state for 'prompt' in App.tsx or use a context.
+                  // Checking App.tsx state...
+                  // const [prompt, setPrompt] = useState(''); -- It should be there.
+                  setPrompt(wallpaper.prompt);
+                  // If we want to switch to a 'create' mode if it's separate.
+                  // In desktop, it's always visible on left? No, let's check.
+                  // App structure: Left Panel (Create), Right Panel (Gallery).
+                  // So we just update prompt and maybe scroll to top?
+                }}
               />
             )}
           </AnimatePresence>
-          
+
           {/* Image Editor Modal */}
           <AnimatePresence>
             {showEditor && editingWallpaper && (
@@ -1735,7 +1803,7 @@ const App: React.FC = () => {
               />
             )}
           </AnimatePresence>
-          
+
           {/* User Profile Modal */}
           <AnimatePresence>
             {showProfile && (
@@ -1745,13 +1813,13 @@ const App: React.FC = () => {
                 email={localStorage.getItem('username') || 'guest@example.com'}
                 wallpaperCount={wallpapers.length}
                 favoriteCount={wallpapers.filter(wp => wp.favorite).length}
-                onEditProfile={() => {}}
-                onUploadAvatar={() => {}}
+                onEditProfile={() => { }}
+                onUploadAvatar={() => { }}
                 onClose={() => setShowProfile(false)}
               />
             )}
           </AnimatePresence>
-          
+
           {/* Wallpaper Organizer Modal */}
           <AnimatePresence>
             {showOrganizer && (
@@ -1770,19 +1838,19 @@ const App: React.FC = () => {
               />
             )}
           </AnimatePresence>
-          
+
           {/* Wallpaper Share Modal */}
           <AnimatePresence>
             {showShare && sharingWallpaper && (
               <WallpaperShare
                 wallpaper={sharingWallpaper}
                 onLike={handleLikeWallpaper}
-                onShare={() => {}}
+                onShare={() => { }}
                 onClose={() => setShowShare(false)}
               />
             )}
           </AnimatePresence>
-          
+
           {/* Analytics Dashboard Modal */}
           <AnimatePresence>
             {showAnalytics && (
@@ -1792,7 +1860,7 @@ const App: React.FC = () => {
               />
             )}
           </AnimatePresence>
-          
+
           {/* Premium Features Modal */}
           <AnimatePresence>
             {showPremiumFeatures && (
@@ -1803,13 +1871,13 @@ const App: React.FC = () => {
               />
             )}
           </AnimatePresence>
-          
+
           {/* Mobile Drawer Menu */}
           <MobileDrawerMenu
             isOpen={showMobileDrawer}
             onClose={() => setShowMobileDrawer(false)}
             onNavigate={(tab) => {
-              switch(tab) {
+              switch (tab) {
                 case 'explore':
                   setMobileTab('explore');
                   break;

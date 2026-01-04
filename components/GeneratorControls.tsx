@@ -9,10 +9,16 @@ import { GenerationParams, STYLE_PRESETS } from '../types';
 import { Wand2, Sparkles, Monitor, Smartphone, Square, Zap, History, Trash2, X, Clock, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Import the enhancePrompt service
+import { enhancePrompt } from '../services/geminiService';
+
 interface GeneratorControlsProps {
   onGenerate: (params: GenerationParams, clearPrompt: () => void) => void;
   isGenerating: boolean;
-  currentUserPlan: 'base' | 'basic' | 'pro'; // Add current user plan prop
+  currentUserPlan: 'base' | 'basic' | 'pro';
+  apiKey: string | null;
+  prompt: string;
+  onPromptChange: (newPrompt: string) => void;
 }
 
 // Helper to retrieve draft settings safely
@@ -26,33 +32,35 @@ const getDraftSettings = () => {
   }
 };
 
-export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate, isGenerating, currentUserPlan }) => {
-  // Initialize state with lazy loaders to restore draft from localStorage on mount
-  const [prompt, setPrompt] = useState(() => getDraftSettings().prompt || '');
-  
+export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate, isGenerating, currentUserPlan, apiKey, prompt, onPromptChange }) => {
+  // Local state for resolution/aspectRatio etc. remains here
+  // prompt state is now lifted to parent
+
   const [resolution, setResolution] = useState<'2K' | '4K'>(() => {
     const val = getDraftSettings().resolution;
     return (val === '2K' || val === '4K') ? val : '4K';
   });
-  
+
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16' | '1:1'>(() => {
     const val = getDraftSettings().aspectRatio;
     return (val === '16:9' || val === '9:16' || val === '1:1') ? val : '9:16';
   });
-  
+
   const [selectedStyle, setSelectedStyle] = useState<string>(() => {
-     return getDraftSettings().selectedStyle || 'photorealistic';
+    return getDraftSettings().selectedStyle || 'photorealistic';
   });
-  
+
   const [useEnhancer, setUseEnhancer] = useState(() => {
-     const val = getDraftSettings().useEnhancer;
-     return val !== undefined ? val : true;
+    const val = getDraftSettings().useEnhancer;
+    return val !== undefined ? val : true;
   });
-  
+
+  const [isEnhancing, setIsEnhancing] = useState(false);
+
   // State for generation count (for Basic Premium users)
   const [generationCount, setGenerationCount] = useState<number>(0);
   const [generationLimit, setGenerationLimit] = useState<number>(10);
-  
+
   // History State
   const [history, setHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -78,18 +86,18 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
           try {
             // Get backend URL
             const isDevelopment = () => {
-              return window.location.hostname === 'localhost' || 
-                     window.location.hostname === '127.0.0.1' ||
-                     window.location.hostname.startsWith('localhost:') ||
-                     window.location.port.startsWith('300') ||
-                     window.location.port === '5173' ||
-                     window.location.port === '3000';
+              return window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1' ||
+                window.location.hostname.startsWith('localhost:') ||
+                window.location.port.startsWith('300') ||
+                window.location.port === '5173' ||
+                window.location.port === '3000';
             };
-            
-            const backendUrl = isDevelopment() 
-              ? 'http://localhost:5000' 
+
+            const backendUrl = isDevelopment()
+              ? 'http://localhost:5000'
               : 'https://pixelwallsbackend.onrender.com';
-            
+
             // Fetch generation limit from backend
             const response = await fetch(`${backendUrl}/user-generation-limit/${userId}`);
             if (response.ok) {
@@ -105,7 +113,7 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
         }
       }
     };
-    
+
     loadGenerationCount();
   }, [currentUserPlan]);
 
@@ -144,7 +152,7 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
   };
 
   const selectHistoryItem = (item: string) => {
-    setPrompt(item);
+    onPromptChange(item);
     setShowHistory(false);
   };
 
@@ -154,9 +162,9 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
       alert('Wallpaper generation is not available on the Base Version plan. Please upgrade to Basic Premium or Pro Premium to generate wallpapers.');
       return;
     }
-    
+
     if (!prompt.trim()) return;
-    
+
     // Save to history when generating
     addToHistory(prompt.trim());
 
@@ -165,12 +173,27 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
       resolution,
       aspectRatio,
       stylePreset: selectedStyle,
-      enhancePrompt: useEnhancer
-    }, () => setPrompt(''));
-    
+      enhancePrompt: useEnhancer // Still keep this flag for backend if needed
+    }, () => onPromptChange(''));
+
     // Update generation count for Basic Premium users
     if (currentUserPlan === 'basic') {
       setGenerationCount(prev => prev + 1);
+    }
+  };
+
+  const handleEnhance = async () => {
+    if (!prompt.trim() || isEnhancing || !apiKey) return;
+
+    setIsEnhancing(true);
+    try {
+      const enhanced = await enhancePrompt(prompt, selectedStyle, apiKey);
+      onPromptChange(enhanced);
+    } catch (error) {
+      console.error('Enhancement failed:', error);
+      // Optional: Show error toast
+    } finally {
+      setIsEnhancing(false);
     }
   };
 
@@ -183,7 +206,7 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
       "A calm zen garden with floating rocks",
       "A majestic white owl with golden feathers"
     ];
-    setPrompt(ideas[Math.floor(Math.random() * ideas.length)]);
+    onPromptChange(ideas[Math.floor(Math.random() * ideas.length)]);
     // Pick a random style, excluding 'none' for surprise factor
     const styles = STYLE_PRESETS.filter(s => s.id !== 'none');
     const randomStyle = styles[Math.floor(Math.random() * styles.length)];
@@ -192,332 +215,336 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
 
   return (
     <div className="flex flex-col h-full">
-        
-        {/* Scrollable Settings Area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-            
-            {/* Prompt Input */}
-            <div className="space-y-3">
-                <div className="flex justify-between items-end">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
-                        <Sparkles className="w-3 h-3 text-purple-400" />
-                        Prompt
-                    </label>
-                    
-                    <div className="flex items-center space-x-2">
-                        {/* History Toggle */}
-                        <motion.button
-                            whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setShowHistory(!showHistory)}
-                            className={`text-[10px] font-medium flex items-center transition-colors px-2 py-1 rounded-md cursor-pointer border ${
-                                showHistory 
-                                ? 'bg-white/10 text-white border-white/20' 
-                                : 'bg-white/5 text-zinc-400 border-transparent hover:border-white/10 hover:text-white'
-                            }`}
-                            title="Prompt History"
-                        >
-                            <History className="w-3 h-3 mr-1" />
-                            History
-                        </motion.button>
 
-                        {/* Enhancer Toggle */}
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setUseEnhancer(!useEnhancer)}
-                            className={`text-[10px] font-medium flex items-center transition-colors px-2 py-1 rounded-md cursor-pointer border ${
-                                useEnhancer 
-                                ? 'bg-purple-500/10 text-purple-300 border-purple-500/20 hover:bg-purple-500/20' 
-                                : 'bg-zinc-800/50 text-zinc-500 border-zinc-700 hover:text-zinc-300'
-                            }`}
-                            title={useEnhancer ? "AI Prompt Enhancement Active" : "AI Prompt Enhancement Off"}
-                        >
-                            <Wand2 className={`w-3 h-3 mr-1.5 ${useEnhancer ? 'text-purple-400' : 'text-zinc-600'}`} />
-                            {useEnhancer ? 'AI Enhance' : 'AI Enhance'}
-                        </motion.button>
+      {/* Scrollable Settings Area */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
 
-                        {/* Surprise Me */}
-                        <motion.button 
-                            whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={handleSurpriseMe}
-                            className="text-[10px] font-medium text-zinc-400 hover:text-white flex items-center transition-colors bg-white/5 px-2 py-1 rounded-md cursor-pointer border border-transparent hover:border-white/10"
+        {/* Prompt Input */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center px-1">
+            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+              <span className="w-1 h-3 bg-purple-500 rounded-full"></span>
+              Prompt Details
+            </label>
+
+            <div className="flex items-center gap-1.5">
+              {/* History Toggle */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowHistory(!showHistory)}
+                className={`p-1.5 rounded-lg transition-colors ${showHistory ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+                title="History"
+              >
+                <History className="w-3.5 h-3.5" />
+              </motion.button>
+
+              <div className="w-px h-3 bg-zinc-800 mx-1"></div>
+
+              {/* Enhancer Toggle */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setUseEnhancer(!useEnhancer)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${useEnhancer
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                    : 'bg-zinc-900 border border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'
+                  }`}
+              >
+                <Wand2 className="w-3 h-3" />
+                {useEnhancer ? 'AI Enhanced' : 'Raw Mode'}
+              </motion.button>
+
+              {/* Magic Prompt Action - Only show if not auto-enhancing or as explicit action */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleEnhance}
+                disabled={isEnhancing || !prompt.trim() || !apiKey}
+                className="p-1.5 text-purple-400 hover:bg-purple-500/10 rounded-lg disabled:opacity-30"
+                title="Enhance Now"
+              >
+                <Sparkles className={`w-3.5 h-3.5 ${isEnhancing ? 'animate-spin' : ''}`} />
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleSurpriseMe}
+                className="p-1.5 text-yellow-500 hover:bg-yellow-500/10 rounded-lg"
+                title="Surprise Me"
+              >
+                <Zap className="w-3.5 h-3.5" />
+              </motion.button>
+            </div>
+          </div>
+
+          <div className="relative group">
+            <motion.div
+              className={`absolute -inset-0.5 bg-gradient-to-r rounded-xl opacity-0 group-focus-within:opacity-50 transition-opacity duration-500 blur-sm ${useEnhancer ? 'from-purple-600 to-indigo-600' : 'from-zinc-600 to-zinc-600'}`}
+              layoutId="prompt-glow"
+            />
+            <motion.textarea
+              layout
+              value={prompt}
+              onChange={(e) => onPromptChange(e.target.value)}
+              placeholder={useEnhancer ? "✨ Describe your idea... (AI will work its magic)" : "Type your detailed prompt here..."}
+              className={`relative w-full h-40 p-5 rounded-2xl bg-zinc-900/50 backdrop-blur-md border transition-all resize-none text-sm leading-relaxed text-white placeholder-zinc-600 outline-none shadow-xl ${useEnhancer
+                ? 'border-purple-500/30 focus:border-purple-400/50 focus:shadow-[0_0_30px_-5px_rgba(168,85,247,0.2)]'
+                : 'border-zinc-800 focus:border-zinc-600'
+                }`}
+              whileFocus={{ scale: 1.01 }}
+            />
+
+            {/* History Overlay */}
+            <AnimatePresence>
+              {showHistory && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute inset-0 bg-zinc-900/95 backdrop-blur-md rounded-xl border border-white/10 z-30 flex flex-col overflow-hidden shadow-2xl"
+                >
+                  <div className="flex items-center justify-between p-3 border-b border-white/5 bg-white/5 shrink-0">
+                    <span className="text-xs font-bold text-zinc-400 flex items-center gap-2">
+                      <Clock className="w-3 h-3" /> Recent Prompts
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {history.length > 0 && (
+                        <button
+                          onClick={clearHistory}
+                          className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
                         >
-                            <Zap className="w-3 h-3 mr-1 text-yellow-400" />
-                            Surprise
-                        </motion.button>
+                          <Trash2 className="w-3 h-3" /> Clear
+                        </button>
+                      )}
+                      <button onClick={() => setShowHistory(false)} className="text-zinc-400 hover:text-white p-1">
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
-                </div>
-                
-                <div className="relative group">
-                    <motion.div
-                        className={`absolute -inset-0.5 bg-gradient-to-r rounded-xl opacity-0 group-focus-within:opacity-50 transition-opacity duration-500 blur-sm ${useEnhancer ? 'from-purple-600 to-indigo-600' : 'from-zinc-600 to-zinc-600'}`}
-                        layoutId="prompt-glow"
-                    />
-                    <motion.textarea
-                        layout
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder={useEnhancer ? "Describe your basic idea, and I'll make it magical..." : "Enter your detailed prompt here..."}
-                        className={`relative w-full h-36 p-4 rounded-xl bg-black/60 border focus:border-white/20 transition-all resize-none text-sm text-white placeholder-zinc-600 outline-none shadow-inner ${useEnhancer ? 'border-purple-500/20' : 'border-white/10'}`}
-                        whileFocus={{ scale: 1.01, backgroundColor: "rgba(0,0,0,0.8)" }}
-                    />
-                    
-                    {/* History Overlay */}
-                    <AnimatePresence>
-                        {showHistory && (
-                            <motion.div 
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 10 }}
-                                className="absolute inset-0 bg-zinc-900/95 backdrop-blur-md rounded-xl border border-white/10 z-30 flex flex-col overflow-hidden shadow-2xl"
-                            >
-                                <div className="flex items-center justify-between p-3 border-b border-white/5 bg-white/5 shrink-0">
-                                    <span className="text-xs font-bold text-zinc-400 flex items-center gap-2">
-                                        <Clock className="w-3 h-3" /> Recent Prompts
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                        {history.length > 0 && (
-                                            <button 
-                                                onClick={clearHistory} 
-                                                className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
-                                            >
-                                                <Trash2 className="w-3 h-3" /> Clear
-                                            </button>
-                                        )}
-                                        <button onClick={() => setShowHistory(false)} className="text-zinc-400 hover:text-white p-1">
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
-                                    {history.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-zinc-500 gap-2">
-                                            <History className="w-6 h-6 opacity-20" />
-                                            <span className="text-xs">No history yet</span>
-                                        </div>
-                                    ) : (
-                                        history.map((h, i) => (
-                                            <button 
-                                                key={i} 
-                                                onClick={() => selectHistoryItem(h)}
-                                                className="w-full text-left p-2.5 text-xs text-zinc-300 hover:text-white hover:bg-white/10 rounded-lg transition-colors truncate border border-transparent hover:border-white/5"
-                                                title={h}
-                                            >
-                                                {h}
-                                            </button>
-                                        ))
-                                    )}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {useEnhancer && !showHistory && (
-                        <div className="absolute bottom-3 right-3 text-[10px] text-purple-400/60 flex items-center gap-1 pointer-events-none">
-                            <Sparkles className="w-3 h-3" />
-                            <span>Enhancer Active</span>
-                        </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                    {history.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-zinc-500 gap-2">
+                        <History className="w-6 h-6 opacity-20" />
+                        <span className="text-xs">No history yet</span>
+                      </div>
+                    ) : (
+                      history.map((h, i) => (
+                        <button
+                          key={i}
+                          onClick={() => selectHistoryItem(h)}
+                          className="w-full text-left p-2.5 text-xs text-zinc-300 hover:text-white hover:bg-white/10 rounded-lg transition-colors truncate border border-transparent hover:border-white/5"
+                          title={h}
+                        >
+                          {h}
+                        </button>
+                      ))
                     )}
-                </div>
-            </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* Style Selection */}
-            <div className="space-y-3">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">Visual Style</label>
-                <div className="grid grid-cols-2 gap-3">
-                    {STYLE_PRESETS.map((style) => (
-                        <motion.button
-                            key={style.id}
-                            onClick={() => setSelectedStyle(style.id)}
-                            whileHover={{ scale: 1.03, y: -2 }}
-                            whileTap={{ scale: 0.97 }}
-                            className={`relative group h-24 rounded-xl overflow-hidden text-left transition-all duration-200 border ${
-                                style.id === 'none' ? 'col-span-2' : ''
-                            } ${
-                                selectedStyle === style.id
-                                    ? 'border-purple-500 ring-1 ring-purple-500/50 shadow-lg shadow-purple-900/20'
-                                    : 'border-white/5 hover:border-white/20'
-                            }`}
-                        >
-                            <div className={`absolute inset-0 bg-gradient-to-br ${style.gradient} opacity-40 group-hover:opacity-60 transition-opacity duration-500`} />
-                            <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
-                            <div className="relative z-10 h-full p-3 flex flex-col justify-end">
-                                <span className={`text-xs font-bold leading-tight drop-shadow-md ${selectedStyle === style.id ? 'text-white' : 'text-zinc-300 group-hover:text-white'}`}>
-                                    {style.label}
-                                </span>
-                                <span className="text-[10px] text-white/60 block mt-0.5 leading-tight opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {style.description}
-                                </span>
-                                {selectedStyle === style.id && (
-                                    <motion.div 
-                                        layoutId="active-dot"
-                                        className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"
-                                        transition={{ type: "spring", stiffness: 500, damping: 30 }} 
-                                    />
-                                )}
-                            </div>
-                        </motion.button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Tech Specs */}
-            <div className="space-y-5 pt-6 border-t border-white/5">
-                {/* Aspect Ratio */}
-                <div>
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-3">Dimensions</label>
-                    <div className="grid grid-cols-3 gap-2">
-                        {[
-                            { id: '9:16', label: 'Phone', icon: Smartphone },
-                            { id: '16:9', label: 'Desktop', icon: Monitor },
-                            { id: '1:1', label: 'Square', icon: Square },
-                        ].map((ar) => (
-                            <motion.button
-                                key={ar.id}
-                                onClick={() => setAspectRatio(ar.id as any)}
-                                whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.05)" }}
-                                whileTap={{ scale: 0.95 }}
-                                className={`flex flex-col items-center justify-center py-3 rounded-lg border transition-colors relative ${
-                                    aspectRatio === ar.id
-                                        ? 'border-purple-500/50 bg-purple-500/10 text-white shadow-[0_0_15px_rgba(168,85,247,0.1)]'
-                                        : 'border-white/5 bg-white/5 text-zinc-500 hover:text-zinc-300'
-                                }`}
-                            >
-                                <ar.icon className="w-4 h-4 mb-1.5" />
-                                <span className="text-[10px] font-medium">{ar.label}</span>
-                                {aspectRatio === ar.id && (
-                                    <motion.div
-                                        layoutId="ar-selection"
-                                        className="absolute inset-0 border-2 border-purple-500 rounded-lg opacity-50"
-                                        initial={false}
-                                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                                    />
-                                )}
-                            </motion.button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Resolution */}
-                <div>
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-3">Resolution</label>
-                    <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 relative">
-                        {['2K', '4K'].map((res) => (
-                            <button
-                                key={res}
-                                onClick={() => setResolution(res as any)}
-                                className={`relative flex-1 text-[10px] font-bold py-2 rounded-lg transition-colors z-10 ${
-                                    resolution === res ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
-                                }`}
-                            >
-                                {resolution === res && (
-                                    <motion.div 
-                                        layoutId="resolution-tab"
-                                        className="absolute inset-0 bg-zinc-700 rounded-lg shadow-md"
-                                        transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
-                                    />
-                                )}
-                                <span className="relative z-10">{res}</span>
-                            </button>
-                        ))}
-                    </div>
-                    <p className="text-[9px] text-zinc-500 mt-2 text-center">
-                        Note: 4K images are generated at the highest available resolution (2K) per API limitations
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        {/* Generation Count Display for Basic Premium Users */}
-        {currentUserPlan === 'basic' && (
-          <div className="px-6 mb-4">
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-2 h-2 rounded-full bg-amber-500 mr-2 animate-pulse"></div>
-                <span className="text-xs font-medium text-amber-400">Basic Premium Usage</span>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-bold text-white">
-                  {generationCount} <span className="text-amber-400">/</span> {generationLimit}
-                </div>
-                <div className="text-[10px] text-amber-500/80">images generated</div>
-              </div>
-            </div>
-            {generationCount >= generationLimit && (
-              <div className="mt-2 text-[10px] text-amber-500 flex items-center justify-center gap-1">
-                <Lock className="w-3 h-3" />
-                Upgrade to Pro for unlimited generations
+            {useEnhancer && !showHistory && (
+              <div className="absolute bottom-3 right-3 text-[10px] text-purple-400/60 flex items-center gap-1 pointer-events-none">
+                <Sparkles className="w-3 h-3" />
+                <span>Enhancer Active</span>
               </div>
             )}
           </div>
-        )}
-
-        {/* Footer / Generate Button */}
-        <div className="p-6 bg-zinc-900/90 border-t border-white/5 backdrop-blur-md z-10 shrink-0">
-            <motion.button
-                onClick={handleGenerate}
-                disabled={isGenerating || !prompt.trim() || currentUserPlan === 'base'}
-                whileHover={!isGenerating && prompt.trim() && currentUserPlan !== 'base' ? { scale: 1.02, y: -2 } : {}}
-                whileTap={!isGenerating && prompt.trim() && currentUserPlan !== 'base' ? { scale: 0.96 } : {}}
-                className={`w-full relative group overflow-hidden rounded-xl p-4 transition-all duration-300 ${
-                    isGenerating || !prompt.trim() || currentUserPlan === 'base'
-                        ? 'bg-zinc-800 cursor-not-allowed opacity-50'
-                        : 'shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40'
-                }`}
-            >
-                <div className={`absolute inset-0 transition-opacity duration-300 ${isGenerating || !prompt.trim() || currentUserPlan === 'base' ? 'opacity-0' : 'opacity-100'}`}>
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-gradient bg-[length:200%_auto]" />
-                </div>
-
-                <div className="relative flex items-center justify-center space-x-2 text-white font-bold tracking-wide text-sm">
-                    {isGenerating ? (
-                        <>
-                            <motion.div 
-                                animate={{ rotate: 360 }}
-                                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                                className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full mr-2" 
-                            />
-                            <motion.span
-                                animate={{ opacity: [1, 0.5, 1] }}
-                                transition={{ duration: 1.5, repeat: Infinity }}
-                            >
-                                {useEnhancer ? 'Refining & Designing...' : 'Designing...'}
-                            </motion.span>
-                        </>
-                    ) : currentUserPlan === 'base' ? (
-                        <>
-                          <Lock className="w-4 h-4 mr-1" />
-                          <span>Upgrade to Generate</span>
-                        </>
-                    ) : (
-                        <>
-                          <Wand2 className="w-4 h-4 mr-1 group-hover:rotate-12 transition-transform" />
-                          <span>Generate Wallpaper</span>
-                        </>
-                    )}
-                </div>
-            </motion.button>
-            {currentUserPlan === 'base' && (
-              <div className="text-center mt-3">
-                <p className="text-[10px] text-amber-500 flex items-center justify-center gap-1">
-                  <Lock className="w-3 h-3" />
-                  Generation disabled on Base plan. Upgrade to generate wallpapers.
-                </p>
-              </div>
-            )}
-            {currentUserPlan !== 'base' && (
-              <div className="text-center mt-3">
-                <p className="text-[10px] text-zinc-600 flex items-center justify-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                  Gemini 3 Pro Image {useEnhancer ? '+ Flash Enhancer' : 'Raw Mode'}
-                </p>
-              </div>
-            )}
         </div>
 
-        <style>{`
+        {/* Style Selection */}
+        <div className="space-y-3">
+          <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">Visual Style</label>
+          <div className="grid grid-cols-2 gap-3">
+            {STYLE_PRESETS.map((style) => (
+              <motion.button
+                key={style.id}
+                onClick={() => setSelectedStyle(style.id)}
+                whileHover={{ scale: 1.03, y: -2 }}
+                whileTap={{ scale: 0.97 }}
+                className={`relative group h-24 rounded-xl overflow-hidden text-left transition-all duration-200 border ${style.id === 'none' ? 'col-span-2' : ''
+                  } ${selectedStyle === style.id
+                    ? 'border-purple-500 ring-1 ring-purple-500/50 shadow-lg shadow-purple-900/20'
+                    : 'border-white/5 hover:border-white/20'
+                  }`}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${style.gradient} opacity-40 group-hover:opacity-60 transition-opacity duration-500`} />
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
+                <div className="relative z-10 h-full p-3 flex flex-col justify-end">
+                  <span className={`text-xs font-bold leading-tight drop-shadow-md ${selectedStyle === style.id ? 'text-white' : 'text-zinc-300 group-hover:text-white'}`}>
+                    {style.label}
+                  </span>
+                  <span className="text-[10px] text-white/60 block mt-0.5 leading-tight opacity-0 group-hover:opacity-100 transition-opacity">
+                    {style.description}
+                  </span>
+                  {selectedStyle === style.id && (
+                    <motion.div
+                      layoutId="active-dot"
+                      className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tech Specs */}
+        <div className="space-y-5 pt-6 border-t border-white/5">
+          {/* Aspect Ratio */}
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-3">Dimensions</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: '9:16', label: 'Phone', icon: Smartphone },
+                { id: '16:9', label: 'Desktop', icon: Monitor },
+                { id: '1:1', label: 'Square', icon: Square },
+              ].map((ar) => (
+                <motion.button
+                  key={ar.id}
+                  onClick={() => setAspectRatio(ar.id as any)}
+                  whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.05)" }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`flex flex-col items-center justify-center py-3 rounded-lg border transition-colors relative ${aspectRatio === ar.id
+                    ? 'border-purple-500/50 bg-purple-500/10 text-white shadow-[0_0_15px_rgba(168,85,247,0.1)]'
+                    : 'border-white/5 bg-white/5 text-zinc-500 hover:text-zinc-300'
+                    }`}
+                >
+                  <ar.icon className="w-4 h-4 mb-1.5" />
+                  <span className="text-[10px] font-medium">{ar.label}</span>
+                  {aspectRatio === ar.id && (
+                    <motion.div
+                      layoutId="ar-selection"
+                      className="absolute inset-0 border-2 border-purple-500 rounded-lg opacity-50"
+                      initial={false}
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {/* Resolution */}
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-3">Resolution</label>
+            <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 relative">
+              {['2K', '4K'].map((res) => (
+                <button
+                  key={res}
+                  onClick={() => setResolution(res as any)}
+                  className={`relative flex-1 text-[10px] font-bold py-2 rounded-lg transition-colors z-10 ${resolution === res ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                >
+                  {resolution === res && (
+                    <motion.div
+                      layoutId="resolution-tab"
+                      className="absolute inset-0 bg-zinc-700 rounded-lg shadow-md"
+                      transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                    />
+                  )}
+                  <span className="relative z-10">{res}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[9px] text-zinc-500 mt-2 text-center">
+              Note: 4K images are generated at the highest available resolution (2K) per API limitations
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Generation Count Display for Basic Premium Users */}
+      {currentUserPlan === 'basic' && (
+        <div className="px-6 mb-4">
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-2 h-2 rounded-full bg-amber-500 mr-2 animate-pulse"></div>
+              <span className="text-xs font-medium text-amber-400">Basic Premium Usage</span>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-bold text-white">
+                {generationCount} <span className="text-amber-400">/</span> {generationLimit}
+              </div>
+              <div className="text-[10px] text-amber-500/80">images generated</div>
+            </div>
+          </div>
+          {generationCount >= generationLimit && (
+            <div className="mt-2 text-[10px] text-amber-500 flex items-center justify-center gap-1">
+              <Lock className="w-3 h-3" />
+              Upgrade to Pro for unlimited generations
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Footer / Generate Button */}
+      <div className="p-6 bg-zinc-900/90 border-t border-white/5 backdrop-blur-md z-10 shrink-0">
+        <motion.button
+          onClick={handleGenerate}
+          disabled={isGenerating || !prompt.trim() || currentUserPlan === 'base'}
+          whileHover={!isGenerating && prompt.trim() && currentUserPlan !== 'base' ? { scale: 1.02, y: -2 } : {}}
+          whileTap={!isGenerating && prompt.trim() && currentUserPlan !== 'base' ? { scale: 0.96 } : {}}
+          className={`w-full relative group overflow-hidden rounded-xl p-4 transition-all duration-300 ${isGenerating || !prompt.trim() || currentUserPlan === 'base'
+            ? 'bg-zinc-800 cursor-not-allowed opacity-50'
+            : 'shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40'
+            }`}
+        >
+          <div className={`absolute inset-0 transition-opacity duration-300 ${isGenerating || !prompt.trim() || currentUserPlan === 'base' ? 'opacity-0' : 'opacity-100'}`}>
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-gradient bg-[length:200%_auto]" />
+          </div>
+
+          <div className="relative flex items-center justify-center space-x-2 text-white font-bold tracking-wide text-sm">
+            {isGenerating ? (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                  className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full mr-2"
+                />
+                <motion.span
+                  animate={{ opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  {useEnhancer ? 'Refining & Designing...' : 'Designing...'}
+                </motion.span>
+              </>
+            ) : currentUserPlan === 'base' ? (
+              <>
+                <Lock className="w-4 h-4 mr-1" />
+                <span>Upgrade to Generate</span>
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-4 h-4 mr-1 group-hover:rotate-12 transition-transform" />
+                <span>Generate Wallpaper</span>
+              </>
+            )}
+          </div>
+        </motion.button>
+        {currentUserPlan === 'base' && (
+          <div className="text-center mt-3">
+            <p className="text-[10px] text-amber-500 flex items-center justify-center gap-1">
+              <Lock className="w-3 h-3" />
+              Generation disabled on Base plan. Upgrade to generate wallpapers.
+            </p>
+          </div>
+        )}
+        {currentUserPlan !== 'base' && (
+          <div className="text-center mt-3">
+            <p className="text-[10px] text-zinc-600 flex items-center justify-center gap-1">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+              Gemini 3 Pro Image {useEnhancer ? '+ Flash Enhancer' : 'Raw Mode'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <style>{`
             @keyframes gradient {
                 0% { background-position: 0% 50%; }
                 50% { background-position: 100% 50%; }

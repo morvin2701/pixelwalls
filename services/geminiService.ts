@@ -3,8 +3,57 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import { GoogleGenAI, Modality } from '@google/genai';
 import { GenerationParams, STYLE_PRESETS } from '../types';
+
+// Standalone function to enhance prompts
+export const enhancePrompt = async (
+  currentPrompt: string, 
+  styleId: string = 'none', 
+  apiKey?: string
+): Promise<string> => {
+  const resolvedApiKey = apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+  if (!resolvedApiKey) {
+    throw new Error('API key is missing.');
+  }
+  
+  const ai = new GoogleGenAI({ apiKey: resolvedApiKey });
+  const style = STYLE_PRESETS.find(s => s.id === styleId);
+  const isStyleActive = style && style.id !== 'none';
+
+  const enhancementSystemPrompt = `You are an expert AI art director. 
+  Rewrite the user's concept into a descriptive, high-quality image generation prompt for Gemini 3 Pro.
+  
+  User Concept: "${currentPrompt}"
+  Style Context: ${isStyleActive ? `${style.label} (${style.description})` : 'Neutral / Faithful to User Concept'}
+  ${isStyleActive ? `Visual Elements to Integrate: ${style.promptSuffix}` : ''}
+  
+  Instructions:
+  1. Describe the scene, lighting, and composition in detail.
+  2. Integrate the style's visual elements naturally into the description (if a style is provided).
+  3. Do not simply append a list of keywords.
+  4. Output ONLY the final prompt text.`;
+
+  try {
+    const enhancementResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: enhancementSystemPrompt }] }],
+    });
+
+    if (enhancementResponse.text) {
+      return enhancementResponse.text.trim();
+    }
+    return currentPrompt;
+  } catch (error) {
+    console.warn('Prompt enhancement failed:', error);
+    throw error;
+  }
+};
 
 export const generateWallpaperImage = async (params: GenerationParams, apiKey?: string): Promise<{ imageBase64: string; mimeType: string; enhancedPrompt: string }> => {
   // Initialize the client inside the function to ensure it picks up the latest API_KEY 
@@ -20,34 +69,11 @@ export const generateWallpaperImage = async (params: GenerationParams, apiKey?: 
 
   try {
     let finalPrompt = params.prompt;
-    const style = STYLE_PRESETS.find(s => s.id === params.stylePreset);
-    const isStyleActive = style && style.id !== 'none';
-
+    
     // Step 1: Enhance the prompt using Gemini Flash if requested
     if (params.enhancePrompt) {
       try {
-        // We pass the style hints to the AI to weave them in naturally, rather than appending tags manually.
-        const enhancementSystemPrompt = `You are an expert AI art director. 
-        Rewrite the user's concept into a descriptive, high-quality image generation prompt for Gemini 3 Pro.
-        
-        User Concept: "${params.prompt}"
-        Style Context: ${isStyleActive ? `${style.label} (${style.description})` : 'Neutral / Faithful to User Concept'}
-        ${isStyleActive ? `Visual Elements to Integrate: ${style.promptSuffix}` : ''}
-        
-        Instructions:
-        1. Describe the scene, lighting, and composition in detail.
-        2. Integrate the style's visual elements naturally into the description (if a style is provided).
-        3. Do not simply append a list of keywords.
-        4. Output ONLY the final prompt text.`;
-
-        const enhancementResponse = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: [{ role: 'user', parts: [{ text: enhancementSystemPrompt }] }],
-        });
-
-        if (enhancementResponse.text) {
-          finalPrompt = enhancementResponse.text.trim();
-        }
+        finalPrompt = await enhancePrompt(params.prompt, params.stylePreset, resolvedApiKey);
       } catch (enhancementError) {
         console.warn('Prompt enhancement failed, proceeding with original prompt:', enhancementError);
         // Fallback to original prompt if enhancement fails
@@ -105,7 +131,7 @@ export const generateWallpaperImage = async (params: GenerationParams, apiKey?: 
     return {
       imageBase64: imagePart.inlineData.data,
       mimeType: imagePart.inlineData.mimeType || 'image/png',
-      enhancedPrompt: finalPrompt
+      enhancedPrompt: finalPrompt // Return the prompt that was actually used
     };
 
   } catch (error: any) {

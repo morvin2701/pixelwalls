@@ -65,16 +65,16 @@ const MobileDrawerMenu: React.FC<MobileDrawerMenuProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
             onClick={handleOverlayClick}
           />
-          
+
           <motion.div
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'tween', duration: 0.3 }}
-            className="fixed top-0 left-0 h-full w-80 max-w-[80%] bg-zinc-900 border-r border-zinc-800 z-50 shadow-2xl lg:hidden"
+            className="fixed top-0 left-0 h-full w-80 max-w-[80%] bg-zinc-900 border-r border-zinc-800 z-50 shadow-2xl"
           >
             <div className="flex flex-col h-full">
               {/* Header with close button */}
