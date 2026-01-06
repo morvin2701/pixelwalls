@@ -52,6 +52,7 @@ const modalVariants: Variants = {
 export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onToggleFavorite, onDelete, onEdit, onShare, onRemix }) => {
   const [downloadQuality, setDownloadQuality] = useState<'High' | 'Medium'>('High');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSavingToGallery, setIsSavingToGallery] = useState(false);
 
   const [showCollectionMenu, setShowCollectionMenu] = useState(false);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -171,6 +172,74 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
     }
   };
 
+  const handleSaveToGallery = async () => {
+    if (isSavingToGallery) return;
+    setIsSavingToGallery(true);
+
+    try {
+      // Fetch the image as blob
+      const response = await fetch(wallpaper!.url);
+      const blob = await response.blob();
+
+      // Get the user's saved images count from localStorage
+      const userId = localStorage.getItem('userId');
+      const saveCountKey = userId ? `pixelWallsSaveCount_${userId}` : 'pixelWallsSaveCount';
+      let saveCount = parseInt(localStorage.getItem(saveCountKey) || '0', 10);
+      saveCount++;
+      localStorage.setItem(saveCountKey, saveCount.toString());
+
+      // Format the save count with leading zeros (001, 002, etc.)
+      const formattedCount = saveCount.toString().padStart(3, '0');
+      const filename = `PixelWalls_${formattedCount}`;
+
+      // Try to save using the File System Access API (for mobile and modern browsers)
+      if ('showSaveFilePicker' in window) {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: `${filename}.png`,
+          types: [{
+            description: 'Image',
+            accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'] }
+          }]
+        });
+        
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } else if ('navigator' in window && 'canShare' in navigator && (window.navigator as any).canShare({ files: [new File([], 'test')] })) {
+        // Try using the Web Share API for mobile devices
+        const file = new File([blob], `${filename}.png`, { type: blob.type });
+        const shareData = {
+          files: [file],
+          title: 'PixelWalls Image',
+          text: 'Check out this wallpaper from PixelWalls!'
+        };
+        
+        await (window.navigator as any).share(shareData);
+      } else {
+        // Fallback: Create and trigger download
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.png`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        // Show a message to the user that the image has been saved
+        alert('Image saved to gallery!');
+      }
+    } catch (e) {
+      console.error('Save to gallery failed', e);
+      alert('Failed to save image to gallery. The image has been downloaded instead.');
+      
+      // Fallback to regular download
+      handleDownload();
+    } finally {
+      setIsSavingToGallery(false);
+    }
+  };
+
   return (
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 overflow-y-auto"
@@ -218,7 +287,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
         </div>
 
         {/* Sidebar / Info Area */}
-        <div className="w-full md:w-[400px] bg-zinc-900 border-l border-white/5 flex flex-col h-auto md:h-full z-20 shadow-xl md:max-h-none max-h-[50vh]">
+        <div className="w-full md:w-[400px] bg-zinc-900 border-l border-white/5 flex flex-col h-auto md:h-full z-20 shadow-xl">
           <div className="flex items-center justify-between p-6 border-b border-white/5">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-lg shadow-purple-900/20">
@@ -237,44 +306,67 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
             </motion.button>
           </div>
 
-          <div className="p-4 md:p-6 flex-1 overflow-y-auto custom-scrollbar">
-            <div className="space-y-6 md:space-y-8">
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="p-4 md:p-6 space-y-6 md:space-y-8">
+              {/* Prompt Section */}
               <div className="relative group">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-3 flex items-center gap-2">
-                  Prompt
-                </label>
-                <div className="p-4 rounded-2xl bg-zinc-950/50 border border-white/5 text-zinc-300 text-sm leading-relaxed italic relative min-h-[80px]">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-500"></div>
-                  <div className="pl-3 break-words whitespace-pre-wrap">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+                    <Wand2 className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                    Prompt
+                  </label>
+                </div>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-zinc-900/80 to-zinc-950/80 border border-white/10 text-zinc-300 text-sm leading-relaxed italic relative min-h-[80px] backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 rounded-2xl"></div>
+                  <div className="relative pl-3 break-words whitespace-pre-wrap">
                     "{wallpaper.prompt}"
                   </div>
                 </div>
               </div>
 
+              {/* Resolution and Aspect Ratio */}
               <div className="grid grid-cols-2 gap-4">
-                <motion.div whileHover={{ scale: 1.02 }} className="bg-zinc-800/30 p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Resolution</label>
-                  <p className="text-lg font-semibold text-white mt-1 tracking-tight">{wallpaper.resolution}</p>
+                <motion.div 
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity"></div>
+                  <div className="relative bg-gradient-to-br from-zinc-900/80 to-zinc-950/80 backdrop-blur-sm p-4 rounded-2xl border border-white/10 hover:border-white/20 transition-all">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Resolution</label>
+                    <p className="text-lg font-semibold text-white mt-1 tracking-tight">{wallpaper.resolution}</p>
+                  </div>
                 </motion.div>
-                <motion.div whileHover={{ scale: 1.02 }} className="bg-zinc-800/30 p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Aspect Ratio</label>
-                  <p className="text-lg font-semibold text-white mt-1 tracking-tight">{wallpaper.aspectRatio}</p>
+                <motion.div 
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity"></div>
+                  <div className="relative bg-gradient-to-br from-zinc-900/80 to-zinc-950/80 backdrop-blur-sm p-4 rounded-2xl border border-white/10 hover:border-white/20 transition-all">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Aspect Ratio</label>
+                    <p className="text-lg font-semibold text-white mt-1 tracking-tight">{wallpaper.aspectRatio}</p>
+                  </div>
                 </motion.div>
               </div>
 
-              <div className="pt-4 border-t border-white/5">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Visibility</label>
+              {/* Visibility Section */}
+              <div className="pt-4 border-t border-white/10">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-1.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg">
+                    <Lock className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                    Visibility
+                  </label>
                 </div>
-                <div className="flex items-center justify-between bg-zinc-800/30 px-4 py-3 rounded-xl border border-white/5">
+                <div className="flex items-center justify-between bg-gradient-to-br from-zinc-900/80 to-zinc-950/80 backdrop-blur-sm px-4 py-3 rounded-2xl border border-white/10">
                   <div className="flex items-center space-x-3">
                     {isPublic ? (
-                      <Globe className="w-5 h-5 text-green-400" />
+                      <Globe className="w-5 h-5 text-emerald-400" />
                     ) : (
-                      <Lock className="w-5 h-5 text-zinc-400" />
+                      <Lock className="w-5 h-5 text-amber-400" />
                     )}
                     <div className="flex flex-col">
-                      <span className={`text-sm font-semibold ${isPublic ? 'text-white' : 'text-zinc-400'}`}>
+                      <span className={`text-sm font-semibold ${isPublic ? 'text-emerald-400' : 'text-amber-400'}`}>
                         {isPublic ? 'Public' : 'Private'}
                       </span>
                       <span className="text-[10px] text-zinc-500">
@@ -285,26 +377,32 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                   <button
                     onClick={handleTogglePublic}
                     disabled={isUpdatingVisibility}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isPublic
-                      ? 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
-                      : 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all backdrop-blur-sm border ${isPublic
+                      ? 'bg-rose-500/20 border-rose-500/30 text-rose-400 hover:bg-rose-500/30'
+                      : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30'
                       }`}
                   >
-                    {isUpdatingVisibility ? '...' : (isPublic ? 'Make Private' : 'Publish')}
+                    {isUpdatingVisibility ? '...' : (isPublic ? 'Make Private' : 'Make Public')}
                   </button>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-white/5">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Model</label>
-                </div>
-                <div className="flex items-center space-x-3 bg-gradient-to-r from-zinc-900 to-zinc-800 px-4 py-3 rounded-xl border border-white/5">
-                  <div className="relative w-3 h-3">
-                    <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
-                    <div className="relative w-3 h-3 bg-green-500 rounded-full border-2 border-zinc-900"></div>
+              {/* Model Section */}
+              <div className="pt-4 border-t border-white/10">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-1.5 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg">
+                    <Wand2 className="w-3.5 h-3.5 text-white" />
                   </div>
-                  <span className="text-sm font-semibold text-zinc-300">Gemini 3 Pro Image</span>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                    Model
+                  </label>
+                </div>
+                <div className="flex items-center space-x-3 bg-gradient-to-br from-zinc-900/80 to-zinc-950/80 backdrop-blur-sm px-4 py-3 rounded-2xl border border-white/10">
+                  <div className="relative w-3 h-3">
+                    <div className="absolute inset-0 bg-cyan-500 rounded-full animate-ping opacity-75"></div>
+                    <div className="relative w-3 h-3 bg-cyan-500 rounded-full border-2 border-zinc-900"></div>
+                  </div>
+                  <span className="text-sm font-semibold text-cyan-400">Gemini 3 Pro Image</span>
                 </div>
               </div>
             </div>
@@ -343,6 +441,21 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                 <Download className="w-5 h-5" />
               )}
               <span>{isDownloading ? 'Downloading...' : `Download ${downloadQuality}`}</span>
+            </motion.button>
+                          
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={handleSaveToGallery}
+              disabled={isSavingToGallery}
+              className={`w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-4 rounded-xl font-bold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg shadow-purple-500/20 mb-3 ${isSavingToGallery ? 'opacity-70 cursor-wait' : ''}`}
+            >
+              {isSavingToGallery ? (
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              ) : (
+                <Download className="w-5 h-5" />
+              )}
+              <span>{isSavingToGallery ? 'Saving to Gallery...' : 'Save to Gallery'}</span>
             </motion.button>
 
             <div className="mb-3 relative z-50">
