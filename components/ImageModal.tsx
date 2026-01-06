@@ -273,7 +273,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
         {/* Image Area */}
         <div className="flex-1 bg-zinc-950 flex items-center justify-center relative overflow-hidden group md:min-h-0 min-h-[40vh]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-800/30 to-zinc-950 opacity-50"></div>
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none mix-blend-overlay"></div>
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none mix-blur-overlay"></div>
 
           <motion.img
             layoutId={`image-${wallpaper.id}`}

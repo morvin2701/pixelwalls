@@ -176,7 +176,7 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
       enhancePrompt: useEnhancer // Still keep this flag for backend if needed
     }, () => onPromptChange(''));
 
-    // Update generation count for Basic Premium users
+    // Update generation count for Basic Premium users only (Pro Premium users have unlimited generations)
     if (currentUserPlan === 'basic') {
       setGenerationCount(prev => prev + 1);
     }
