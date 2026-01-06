@@ -270,7 +270,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
         {/* Modal Content */}
         <motion.div
           variants={modalVariants}
-          className="relative w-full max-w-7xl h-[90vh] bg-zinc-900 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col border border-white/10 ring-1 ring-white/5 z-10 max-h-[95vh]"
+          className="relative w-full max-w-7xl h-[90vh] bg-zinc-900/95 backdrop-blur-2xl rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row border border-white/10 ring-1 ring-white/5 z-10 max-h-[95vh]"
           onClick={(e) => e.stopPropagation()}
         >
 
@@ -284,8 +284,8 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
           </motion.button>
 
           {/* Image Area */}
-          <div className="flex-1 bg-zinc-950 flex items-center justify-center relative overflow-hidden group md:min-h-0 min-h-[40vh]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-800/30 to-zinc-950 opacity-50"></div>
+          <div className="flex-1 bg-zinc-950/50 flex items-center justify-center relative overflow-hidden group md:min-h-0 min-h-[40vh]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-zinc-950/50 to-zinc-950 opacity-100"></div>
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none mix-blur-overlay"></div>
 
             <motion.img
@@ -300,7 +300,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
           </div>
 
           {/* Sidebar / Info Area */}
-          <div className="w-full md:w-[400px] bg-zinc-900 border-l border-white/5 flex flex-col h-auto md:h-full z-20 shadow-xl">
+          <div className="w-full md:w-[400px] bg-zinc-900/80 backdrop-blur-xl border-l border-white/5 flex flex-col h-auto md:h-full z-20 shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-white/5">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-lg shadow-purple-900/20">
