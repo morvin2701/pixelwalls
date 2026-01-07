@@ -292,7 +292,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
               layoutId={`image-${wallpaper.id}`}
               src={wallpaper.url}
               alt={wallpaper.prompt}
-              className="max-w-full max-h-full object-contain shadow-2xl z-10"
+              className="max-w-[calc(100%-4rem)] max-h-[calc(100%-4rem)] object-contain shadow-2xl z-10 relative"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.4 }}
@@ -300,8 +300,8 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
           </div>
 
           {/* Sidebar / Info Area */}
-          <div className="w-full md:w-[400px] bg-zinc-900/80 backdrop-blur-xl border-l border-white/5 flex flex-col h-auto md:h-full z-20 shadow-2xl">
-            <div className="flex items-center justify-between p-6 border-b border-white/5">
+          <div className="w-full md:w-[400px] flex-shrink-0 bg-zinc-900/80 backdrop-blur-xl border-l border-white/5 flex flex-col h-auto md:h-full z-20 shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-white/5 bg-zinc-900/50 backdrop-blur-md z-30 sticky top-0">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-lg shadow-purple-900/20">
                   <Wand2 className="w-4 h-4 text-white" />
@@ -320,7 +320,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <div className="p-4 md:p-6 space-y-6 md:space-y-8">
+              <div className="p-4 md:p-6 space-y-6 md:space-y-8 pb-32">
                 {/* Prompt Section */}
                 <div className="relative group">
                   <div className="flex items-center gap-2 mb-3">
@@ -418,160 +418,160 @@ export const ImageModal: React.FC<ImageModalProps> = ({ wallpaper, onClose, onTo
                     <span className="text-sm font-semibold text-cyan-400">Gemini 3 Pro Image</span>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="p-6 border-t border-white/5 bg-zinc-900 relative z-30 flex-shrink-0">
+                {/* --- Buttons / Controls --- */}
+                <div className="pt-6 border-t border-white/10">
+                  {/* Quality Selector */}
+                  <div className="mb-4">
+                    <div className="flex bg-zinc-950 p-1 rounded-xl border border-white/5">
+                      <button
+                        onClick={() => setDownloadQuality('High')}
+                        className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${downloadQuality === 'High' ? 'bg-zinc-800 text-white shadow-sm border border-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                      >
+                        High (PNG)
+                      </button>
+                      <button
+                        onClick={() => setDownloadQuality('Medium')}
+                        className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${downloadQuality === 'Medium' ? 'bg-zinc-800 text-white shadow-sm border border-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                      >
+                        Medium (JPG)
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Quality Selector */}
-              <div className="mb-4">
-                <div className="flex bg-zinc-950 p-1 rounded-xl border border-white/5">
-                  <button
-                    onClick={() => setDownloadQuality('High')}
-                    className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${downloadQuality === 'High' ? 'bg-zinc-800 text-white shadow-sm border border-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={handleDownload}
+                    disabled={isDownloading}
+                    className={`w-full flex items-center justify-center space-x-2 bg-white text-black px-4 py-4 rounded-xl font-bold hover:bg-zinc-200 transition-all shadow-lg shadow-white/5 mb-3 ${isDownloading ? 'opacity-70 cursor-wait' : ''}`}
                   >
-                    High (PNG)
-                  </button>
-                  <button
-                    onClick={() => setDownloadQuality('Medium')}
-                    className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${downloadQuality === 'Medium' ? 'bg-zinc-800 text-white shadow-sm border border-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    {isDownloading ? (
+                      <span className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></span>
+                    ) : (
+                      <Download className="w-5 h-5" />
+                    )}
+                    <span>{isDownloading ? 'Downloading...' : `Download ${downloadQuality}`}</span>
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={handleSaveToGallery}
+                    disabled={isSavingToGallery}
+                    className={`w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-4 rounded-xl font-bold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg shadow-purple-500/20 mb-3 ${isSavingToGallery ? 'opacity-70 cursor-wait' : ''}`}
                   >
-                    Medium (JPG)
-                  </button>
-                </div>
-              </div>
+                    {isSavingToGallery ? (
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    ) : (
+                      <Download className="w-5 h-5" />
+                    )}
+                    <span>{isSavingToGallery ? 'Saving to Gallery...' : 'Save to Gallery'}</span>
+                  </motion.button>
 
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={handleDownload}
-                disabled={isDownloading}
-                className={`w-full flex items-center justify-center space-x-2 bg-white text-black px-4 py-4 rounded-xl font-bold hover:bg-zinc-200 transition-all shadow-lg shadow-white/5 mb-3 ${isDownloading ? 'opacity-70 cursor-wait' : ''}`}
-              >
-                {isDownloading ? (
-                  <span className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></span>
-                ) : (
-                  <Download className="w-5 h-5" />
-                )}
-                <span>{isDownloading ? 'Downloading...' : `Download ${downloadQuality}`}</span>
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={handleSaveToGallery}
-                disabled={isSavingToGallery}
-                className={`w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-4 rounded-xl font-bold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg shadow-purple-500/20 mb-3 ${isSavingToGallery ? 'opacity-70 cursor-wait' : ''}`}
-              >
-                {isSavingToGallery ? (
-                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                ) : (
-                  <Download className="w-5 h-5" />
-                )}
-                <span>{isSavingToGallery ? 'Saving to Gallery...' : 'Save to Gallery'}</span>
-              </motion.button>
-
-              <div className="mb-3 relative z-50">
-                <motion.button
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={handleFetchCollections}
-                  className="w-full flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-purple-500/30 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-all font-medium"
-                >
-                  <FolderPlus className="w-5 h-5" />
-                  <span>Save to Collection...</span>
-                </motion.button>
-
-                <AnimatePresence>
-                  {showCollectionMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute bottom-full left-0 mb-2 w-full bg-zinc-900 border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto"
+                  <div className="mb-3 relative z-50">
+                    <motion.button
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={handleFetchCollections}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-purple-500/30 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-all font-medium"
                     >
-                      {collections.length === 0 ? (
-                        <div className="p-3 text-xs text-zinc-500 text-center">No collections found</div>
-                      ) : (
-                        collections.map(col => (
-                          <button
-                            key={col.id}
-                            onClick={() => handleAddToCollection(col.id)}
-                            disabled={isAddingToCollection === col.id}
-                            className="w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex items-center justify-between border-b border-white/5 last:border-0"
-                          >
-                            <span className="truncate">{col.name}</span>
-                            {isAddingToCollection === col.id ? (
-                              <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <div className="w-4 h-4" />
-                            )}
-                          </button>
-                        ))
+                      <FolderPlus className="w-5 h-5" />
+                      <span>Save to Collection...</span>
+                    </motion.button>
+
+                    <AnimatePresence>
+                      {showCollectionMenu && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute bottom-full left-0 mb-2 w-full bg-zinc-900 border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto"
+                        >
+                          {collections.length === 0 ? (
+                            <div className="p-3 text-xs text-zinc-500 text-center">No collections found</div>
+                          ) : (
+                            collections.map(col => (
+                              <button
+                                key={col.id}
+                                onClick={() => handleAddToCollection(col.id)}
+                                disabled={isAddingToCollection === col.id}
+                                className="w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex items-center justify-between border-b border-white/5 last:border-0"
+                              >
+                                <span className="truncate">{col.name}</span>
+                                {isAddingToCollection === col.id ? (
+                                  <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <div className="w-4 h-4" />
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </motion.div>
                       )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                    </AnimatePresence>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => onRemix && onRemix(wallpaper)}
-                  className="flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
-                >
-                  <Wand2 className="w-5 h-5" />
-                  <span>Remix</span>
-                </motion.button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => onRemix && onRemix(wallpaper)}
+                      className="flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
+                    >
+                      <Wand2 className="w-5 h-5" />
+                      <span>Remix</span>
+                    </motion.button>
 
-                <motion.button
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => onEdit(wallpaper)}
-                  className="flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
-                >
-                  <Edit3 className="w-5 h-5" />
-                  <span>Edit</span>
-                </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => onEdit(wallpaper)}
+                      className="flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
+                    >
+                      <Edit3 className="w-5 h-5" />
+                      <span>Edit</span>
+                    </motion.button>
 
-                <motion.button
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => onToggleFavorite(wallpaper.id)}
-                  className={`flex items-center justify-center space-x-2 px-4 py-4 rounded-xl font-medium border transition-all ${wallpaper.favorite
-                    ? 'border-red-500/30 bg-red-500/10 text-red-400 shadow-lg shadow-red-900/20'
-                    : 'border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                    }`}
-                >
-                  <Heart className={`w-5 h-5 ${wallpaper.favorite ? 'fill-current' : ''}`} />
-                  <span>{wallpaper.favorite ? 'Saved' : 'Save'}</span>
-                </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => onToggleFavorite(wallpaper.id)}
+                      className={`flex items-center justify-center space-x-2 px-4 py-4 rounded-xl font-medium border transition-all ${wallpaper.favorite
+                        ? 'border-red-500/30 bg-red-500/10 text-red-400 shadow-lg shadow-red-900/20'
+                        : 'border-white/10 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                        }`}
+                    >
+                      <Heart className={`w-5 h-5 ${wallpaper.favorite ? 'fill-current' : ''}`} />
+                      <span>{wallpaper.favorite ? 'Saved' : 'Save'}</span>
+                    </motion.button>
 
-                <motion.button
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => onShare(wallpaper)}
-                  className="flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all"
-                >
-                  <Share2 className="w-5 h-5" />
-                  <span>Share</span>
-                </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => onShare(wallpaper)}
+                      className="flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all"
+                    >
+                      <Share2 className="w-5 h-5" />
+                      <span>Share</span>
+                    </motion.button>
 
-                <motion.button
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to delete this wallpaper? This action cannot be undone.')) {
-                      onDelete(wallpaper.id);
-                      onClose(); // Close modal after deletion
-                    }
-                  }}
-                  className="col-span-2 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-red-600 bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-all"
-                >
-                  <Trash2 className="w-5 h-5" />
-                  <span>Delete</span>
-                </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete this wallpaper? This action cannot be undone.')) {
+                          onDelete(wallpaper.id);
+                          onClose(); // Close modal after deletion
+                        }
+                      }}
+                      className="col-span-2 flex items-center justify-center space-x-2 px-4 py-4 rounded-xl border border-red-600 bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-all"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                      <span>Delete</span>
+                    </motion.button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
