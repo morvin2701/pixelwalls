@@ -28,7 +28,7 @@ export interface GenerationParams {
   enhancePrompt?: boolean;
 }
 
-export type ViewMode = 'gallery' | 'favorites' | 'history' | 'paymentHistory' | 'collections' | 'community';
+export type ViewMode = 'create' | 'gallery' | 'favorites' | 'history' | 'paymentHistory' | 'collections' | 'community';
 
 export const STYLE_PRESETS = [
   {

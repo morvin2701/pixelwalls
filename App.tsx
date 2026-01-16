@@ -42,6 +42,12 @@ const getBackendUrl = () => {
   return getBackendUrlUtil();
 };
 
+// Utility function to check if Supabase is properly configured
+const isSupabaseConfigured = () => {
+  // Since we're using the services, we'll check if the functions exist
+  return typeof fetchUserWallpapersFromSupabase === 'function';
+};
+
 // Initial Placeholder Data
 // Log initial wallpapers for debugging
 console.log('Initial wallpapers loaded');
@@ -379,31 +385,172 @@ const App: React.FC = () => {
       if (userId) {
         fetchUserPlan(userId);
 
-        // Also ensure wallpapers are loaded when user authenticates
+        // Ensure wallpapers are loaded from Supabase first for cross-device sync
         // This handles cases where authentication state changes
-        if (indexedDBService.isIndexedDBSupported()) {
-          indexedDBService.loadUserWallpapers(userId)
-            .then((indexedDBWallpapers) => {
-              if (indexedDBWallpapers && indexedDBWallpapers.length > 0) {
-                console.log('Reloaded wallpapers from IndexedDB after authentication:', indexedDBWallpapers.length);
-                setWallpapers(indexedDBWallpapers);
+        fetchUserWallpapersFromSupabase(userId)
+          .then((supabaseWallpapers) => {
+            if (supabaseWallpapers && supabaseWallpapers.length > 0) {
+              console.log('Loaded wallpapers from Supabase after authentication:', supabaseWallpapers.length);
+              setWallpapers(supabaseWallpapers);
+              
+              // Update local storage and IndexedDB with the synced data
+              try {
+                localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(supabaseWallpapers));
+                console.log('Wallpapers saved to localStorage from Supabase sync');
+              } catch (localStorageError) {
+                console.error('Failed to save wallpapers to localStorage from Supabase sync:', localStorageError);
+              }
+
+              if (indexedDBService.isIndexedDBSupported()) {
+                indexedDBService.saveUserWallpapers(userId, supabaseWallpapers)
+                  .then(() => {
+                    console.log('Wallpapers saved to IndexedDB from Supabase sync');
+                  })
+                  .catch((saveError) => {
+                    console.error('Failed to save wallpapers to IndexedDB from Supabase sync:', saveError);
+                  });
+              }
+            } else {
+              console.log('No wallpapers found in Supabase, loading from local sources');
+              
+              // If no wallpapers from Supabase, try IndexedDB
+              if (indexedDBService.isIndexedDBSupported()) {
+                indexedDBService.loadUserWallpapers(userId)
+                  .then((indexedDBWallpapers) => {
+                    if (indexedDBWallpapers && indexedDBWallpapers.length > 0) {
+                      console.log('Loaded wallpapers from IndexedDB after authentication:', indexedDBWallpapers.length);
+                      setWallpapers(indexedDBWallpapers);
+                      
+                      // Sync to Supabase in the background
+                      setTimeout(async () => {
+                        try {
+                          for (const wallpaper of indexedDBWallpapers) {
+                            await saveUserWallpaperToSupabase(userId, wallpaper);
+                          }
+                          console.log('Wallpapers synced to Supabase from IndexedDB');
+                        } catch (syncError) {
+                          console.error('Failed to sync wallpapers to Supabase:', syncError);
+                        }
+                      }, 1000);
+                    } else {
+                      // If no IndexedDB wallpapers, try localStorage
+                      const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
+                      if (savedWallpapers) {
+                        try {
+                          const parsedWallpapers = JSON.parse(savedWallpapers);
+                          console.log('Loaded wallpapers from localStorage after authentication:', parsedWallpapers.length);
+                          setWallpapers(parsedWallpapers);
+                          
+                          // Sync to Supabase in the background
+                          setTimeout(async () => {
+                            try {
+                              for (const wallpaper of parsedWallpapers) {
+                                await saveUserWallpaperToSupabase(userId, wallpaper);
+                              }
+                              console.log('Wallpapers synced to Supabase from localStorage');
+                            } catch (syncError) {
+                              console.error('Failed to sync wallpapers to Supabase:', syncError);
+                            }
+                          }, 1000);
+                        } catch (e) {
+                          console.error('Failed to parse wallpapers from localStorage after authentication:', e);
+                        }
+                      }
+                    }
+                  })
+                  .catch((error) => {
+                    console.error('Error loading wallpapers from IndexedDB after authentication:', error);
+                    // Fallback to localStorage
+                    const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
+                    if (savedWallpapers) {
+                      try {
+                        const parsedWallpapers = JSON.parse(savedWallpapers);
+                        console.log('Loaded wallpapers from localStorage after authentication:', parsedWallpapers.length);
+                        setWallpapers(parsedWallpapers);
+                        
+                        // Sync to Supabase in the background
+                        setTimeout(async () => {
+                          try {
+                            for (const wallpaper of parsedWallpapers) {
+                              await saveUserWallpaperToSupabase(userId, wallpaper);
+                            }
+                            console.log('Wallpapers synced to Supabase from localStorage');
+                          } catch (syncError) {
+                            console.error('Failed to sync wallpapers to Supabase:', syncError);
+                          }
+                        }, 1000);
+                      } catch (e) {
+                        console.error('Failed to parse wallpapers from localStorage after authentication:', e);
+                      }
+                    }
+                  });
               } else {
-                // If no IndexedDB wallpapers, try localStorage
+                // Fallback to localStorage if IndexedDB not supported
                 const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
                 if (savedWallpapers) {
                   try {
                     const parsedWallpapers = JSON.parse(savedWallpapers);
-                    console.log('Reloaded wallpapers from localStorage after authentication:', parsedWallpapers.length);
+                    console.log('Loaded wallpapers from localStorage after authentication:', parsedWallpapers.length);
                     setWallpapers(parsedWallpapers);
+                    
+                    // Sync to Supabase in the background
+                    setTimeout(async () => {
+                      try {
+                        for (const wallpaper of parsedWallpapers) {
+                          await saveUserWallpaperToSupabase(userId, wallpaper);
+                        }
+                        console.log('Wallpapers synced to Supabase from localStorage');
+                      } catch (syncError) {
+                        console.error('Failed to sync wallpapers to Supabase:', syncError);
+                      }
+                    }, 1000);
                   } catch (e) {
                     console.error('Failed to parse wallpapers from localStorage after authentication:', e);
                   }
                 }
               }
-            })
-            .catch((error) => {
-              console.error('Error loading wallpapers from IndexedDB after authentication:', error);
-              // Fallback to localStorage
+            }
+          })
+          .catch((error) => {
+            console.error('Error loading wallpapers from Supabase after authentication:', error);
+            
+            // Fallback to local storage and IndexedDB
+            if (indexedDBService.isIndexedDBSupported()) {
+              indexedDBService.loadUserWallpapers(userId)
+                .then((indexedDBWallpapers) => {
+                  if (indexedDBWallpapers && indexedDBWallpapers.length > 0) {
+                    console.log('Loaded wallpapers from IndexedDB after authentication:', indexedDBWallpapers.length);
+                    setWallpapers(indexedDBWallpapers);
+                  } else {
+                    // If no IndexedDB wallpapers, try localStorage
+                    const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
+                    if (savedWallpapers) {
+                      try {
+                        const parsedWallpapers = JSON.parse(savedWallpapers);
+                        console.log('Loaded wallpapers from localStorage after authentication:', parsedWallpapers.length);
+                        setWallpapers(parsedWallpapers);
+                      } catch (e) {
+                        console.error('Failed to parse wallpapers from localStorage after authentication:', e);
+                      }
+                    }
+                  }
+                })
+                .catch((error) => {
+                  console.error('Error loading wallpapers from IndexedDB after authentication:', error);
+                  // Final fallback to localStorage
+                  const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
+                  if (savedWallpapers) {
+                    try {
+                      const parsedWallpapers = JSON.parse(savedWallpapers);
+                      console.log('Loaded wallpapers from localStorage after authentication:', parsedWallpapers.length);
+                      setWallpapers(parsedWallpapers);
+                    } catch (e) {
+                      console.error('Failed to parse wallpapers from localStorage after authentication:', e);
+                    }
+                  }
+                });
+            } else {
+              // Final fallback to localStorage if IndexedDB not supported
               const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
               if (savedWallpapers) {
                 try {
@@ -414,25 +561,13 @@ const App: React.FC = () => {
                   console.error('Failed to parse wallpapers from localStorage after authentication:', e);
                 }
               }
-            });
-        } else {
-          // Fallback to localStorage if IndexedDB not supported
-          const savedWallpapers = localStorage.getItem(`pixelWalls_${userId}`);
-          if (savedWallpapers) {
-            try {
-              const parsedWallpapers = JSON.parse(savedWallpapers);
-              console.log('Loaded wallpapers from localStorage after authentication:', parsedWallpapers.length);
-              setWallpapers(parsedWallpapers);
-            } catch (e) {
-              console.error('Failed to parse wallpapers from localStorage after authentication:', e);
             }
-          }
-        }
+          });
       }
     }
   }, [isAuthenticated]);
 
-  // Save wallpapers to local storage whenever they change
+  // Save wallpapers to local storage and Supabase whenever they change
   useEffect(() => {
     console.log('Wallpapers changed, triggering save effect');
     console.log('isAuthenticated:', isAuthenticated);
@@ -442,6 +577,41 @@ const App: React.FC = () => {
       console.log('User ID from localStorage:', userId);
 
       if (userId) {
+        // Save to Supabase first to ensure cross-device sync
+        setTimeout(async () => {
+          try {
+            // Get current wallpapers from Supabase to compare with local
+            const supabaseWallpapers = await fetchUserWallpapersFromSupabase(userId);
+            
+            // Create a map of existing Supabase wallpapers by ID for comparison
+            const supabaseWallpaperIds = new Set(supabaseWallpapers.map(w => w.id));
+            
+            // Save each wallpaper that's not already in Supabase
+            for (const wallpaper of wallpapers) {
+              if (!supabaseWallpaperIds.has(wallpaper.id)) {
+                await saveUserWallpaperToSupabase(userId, wallpaper);
+                console.log('Wallpaper saved to Supabase:', wallpaper.id);
+              }
+            }
+            
+            // For wallpapers that exist in Supabase but might have been updated locally
+            for (const supabaseWallpaper of supabaseWallpapers) {
+              const localWallpaper = wallpapers.find(w => w.id === supabaseWallpaper.id);
+              if (localWallpaper) {
+                // Check if the wallpaper has been updated (e.g., favorite status changed)
+                if (localWallpaper.favorite !== supabaseWallpaper.favorite) {
+                  await updateUserWallpaperInSupabase(userId, localWallpaper);
+                  console.log('Wallpaper updated in Supabase:', localWallpaper.id);
+                }
+              }
+            }
+            
+            console.log('Wallpapers synchronized to Supabase');
+          } catch (supabaseError) {
+            console.error('Error synchronizing wallpapers to Supabase:', supabaseError);
+          }
+        }, 1000); // Delay to prevent too many rapid calls
+        
         // Save to IndexedDB for offline access
         if (indexedDBService.isIndexedDBSupported()) {
           console.log('IndexedDB is supported, saving wallpapers');
@@ -631,9 +801,7 @@ const App: React.FC = () => {
         try {
           console.log('Attempting to load wallpapers for user:', result.userId);
 
-          let loadedWallpapers = null;
-
-          // First try Supabase
+          // First try Supabase - this is the authoritative source for cross-device sync
           try {
             console.log('Attempting to load wallpapers from Supabase');
             const supabaseWallpapers = await fetchUserWallpapersFromSupabase(result.userId);
@@ -641,7 +809,15 @@ const App: React.FC = () => {
               console.log('Found saved wallpapers in Supabase');
               console.log('Number of wallpapers loaded from Supabase:', supabaseWallpapers.length);
               setWallpapers(supabaseWallpapers);
-              loadedWallpapers = supabaseWallpapers;
+
+              // Update local storage and IndexedDB with the latest data from Supabase
+              // This ensures cross-device sync works properly
+              try {
+                localStorage.setItem(`pixelWalls_${result.userId}`, JSON.stringify(supabaseWallpapers));
+                console.log('Wallpapers saved to localStorage from Supabase');
+              } catch (localStorageError) {
+                console.error('Failed to save wallpapers to localStorage from Supabase:', localStorageError);
+              }
 
               // Save to IndexedDB for offline access
               if (indexedDBService.isIndexedDBSupported()) {
@@ -652,70 +828,288 @@ const App: React.FC = () => {
                   console.error('Failed to save wallpapers to IndexedDB from Supabase:', saveError);
                 }
               }
-
-              // Save to localStorage for fallback
-              try {
-                localStorage.setItem(`pixelWalls_${result.userId}`, JSON.stringify(supabaseWallpapers));
-                console.log('Wallpapers saved to localStorage from Supabase');
-              } catch (localStorageError) {
-                console.error('Failed to save wallpapers to localStorage from Supabase:', localStorageError);
-              }
             } else {
-              console.log('No saved wallpapers found in Supabase');
+              console.log('No saved wallpapers found in Supabase, loading from local storage');
+              
+              // If no wallpapers in Supabase, try IndexedDB
+              if (indexedDBService.isIndexedDBSupported()) {
+                console.log('IndexedDB is supported, loading wallpapers from IndexedDB');
+                try {
+                  const indexedDBWallpapers = await indexedDBService.loadUserWallpapers(result.userId);
+                  if (indexedDBWallpapers && indexedDBWallpapers.length > 0) {
+                    console.log('Found saved wallpapers in IndexedDB');
+                    console.log('Number of wallpapers loaded from IndexedDB:', indexedDBWallpapers.length);
+                    setWallpapers(indexedDBWallpapers);
+                    
+                    // Sync IndexedDB data to localStorage and Supabase
+                    try {
+                      localStorage.setItem(`pixelWalls_${result.userId}`, JSON.stringify(indexedDBWallpapers));
+                      console.log('Wallpapers saved to localStorage from IndexedDB');
+                    } catch (localStorageError) {
+                      console.error('Failed to save wallpapers to localStorage from IndexedDB:', localStorageError);
+                    }
+                    
+                    // Try to sync to Supabase in the background
+                    setTimeout(async () => {
+                      try {
+                        for (const wallpaper of indexedDBWallpapers) {
+                          await saveUserWallpaperToSupabase(result.userId, wallpaper);
+                        }
+                        console.log('Wallpapers synced to Supabase from IndexedDB');
+                      } catch (syncError) {
+                        console.error('Failed to sync wallpapers to Supabase:', syncError);
+                      }
+                    }, 1000);
+                  } else {
+                    console.log('No saved wallpapers found in IndexedDB');
+                    
+                    // Finally, try localStorage
+                    const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
+                    if (savedWallpapers) {
+                      console.log('Found saved wallpapers in localStorage');
+                      try {
+                        const parsedWallpapers = JSON.parse(savedWallpapers);
+                        console.log('Parsed wallpapers from localStorage:', parsedWallpapers);
+                        console.log('Number of wallpapers loaded from localStorage:', parsedWallpapers.length);
+                        setWallpapers(parsedWallpapers);
+                        
+                        // Sync localStorage data to IndexedDB and Supabase
+                        if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
+                          try {
+                            await indexedDBService.saveUserWallpapers(result.userId, parsedWallpapers);
+                            console.log('Wallpapers saved to IndexedDB from localStorage');
+                          } catch (saveError) {
+                            console.error('Failed to save wallpapers to IndexedDB after loading from localStorage:', saveError);
+                          }
+                        }
+                        
+                        // Try to sync to Supabase in the background
+                        setTimeout(async () => {
+                          try {
+                            for (const wallpaper of parsedWallpapers) {
+                              await saveUserWallpaperToSupabase(result.userId, wallpaper);
+                            }
+                            console.log('Wallpapers synced to Supabase from localStorage');
+                          } catch (syncError) {
+                            console.error('Failed to sync wallpapers to Supabase:', syncError);
+                          }
+                        }, 1000);
+                      } catch (e) {
+                        console.error('Failed to parse saved wallpapers:', e);
+                        // Fall back to initial wallpapers if parsing fails
+                        setWallpapers(INITIAL_WALLPAPERS);
+                      }
+                    } else {
+                      console.log('No saved wallpapers found in localStorage');
+                      // If no saved wallpapers, use initial wallpapers
+                      setWallpapers(INITIAL_WALLPAPERS);
+                    }
+                  }
+                } catch (indexedDBError) {
+                  console.error('Error loading from IndexedDB:', indexedDBError);
+                  
+                  // Fallback to localStorage
+                  const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
+                  if (savedWallpapers) {
+                    console.log('Found saved wallpapers in localStorage');
+                    try {
+                      const parsedWallpapers = JSON.parse(savedWallpapers);
+                      console.log('Parsed wallpapers from localStorage:', parsedWallpapers);
+                      console.log('Number of wallpapers loaded from localStorage:', parsedWallpapers.length);
+                      setWallpapers(parsedWallpapers);
+                      
+                      // Sync localStorage data to IndexedDB and Supabase
+                      if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
+                        try {
+                          await indexedDBService.saveUserWallpapers(result.userId, parsedWallpapers);
+                          console.log('Wallpapers saved to IndexedDB from localStorage');
+                        } catch (saveError) {
+                          console.error('Failed to save wallpapers to IndexedDB after loading from localStorage:', saveError);
+                        }
+                      }
+                      
+                      // Try to sync to Supabase in the background
+                      setTimeout(async () => {
+                        try {
+                          for (const wallpaper of parsedWallpapers) {
+                            await saveUserWallpaperToSupabase(result.userId, wallpaper);
+                          }
+                          console.log('Wallpapers synced to Supabase from localStorage');
+                        } catch (syncError) {
+                          console.error('Failed to sync wallpapers to Supabase:', syncError);
+                        }
+                      }, 1000);
+                    } catch (e) {
+                      console.error('Failed to parse saved wallpapers:', e);
+                      // Fall back to initial wallpapers if parsing fails
+                      setWallpapers(INITIAL_WALLPAPERS);
+                    }
+                  } else {
+                    console.log('No saved wallpapers found in localStorage');
+                    // If no saved wallpapers, use initial wallpapers
+                    setWallpapers(INITIAL_WALLPAPERS);
+                  }
+                }
+              } else {
+                // Fallback to localStorage if IndexedDB is not supported
+                const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
+                if (savedWallpapers) {
+                  console.log('Found saved wallpapers in localStorage');
+                  try {
+                    const parsedWallpapers = JSON.parse(savedWallpapers);
+                    console.log('Parsed wallpapers from localStorage:', parsedWallpapers);
+                    console.log('Number of wallpapers loaded from localStorage:', parsedWallpapers.length);
+                    setWallpapers(parsedWallpapers);
+                    
+                    // Sync localStorage data to IndexedDB and Supabase
+                    if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
+                      try {
+                        await indexedDBService.saveUserWallpapers(result.userId, parsedWallpapers);
+                        console.log('Wallpapers saved to IndexedDB from localStorage');
+                      } catch (saveError) {
+                        console.error('Failed to save wallpapers to IndexedDB after loading from localStorage:', saveError);
+                      }
+                    }
+                    
+                    // Try to sync to Supabase in the background
+                    setTimeout(async () => {
+                      try {
+                        for (const wallpaper of parsedWallpapers) {
+                          await saveUserWallpaperToSupabase(result.userId, wallpaper);
+                        }
+                        console.log('Wallpapers synced to Supabase from localStorage');
+                      } catch (syncError) {
+                        console.error('Failed to sync wallpapers to Supabase:', syncError);
+                      }
+                    }, 1000);
+                  } catch (e) {
+                    console.error('Failed to parse saved wallpapers:', e);
+                    // Fall back to initial wallpapers if parsing fails
+                    setWallpapers(INITIAL_WALLPAPERS);
+                  }
+                } else {
+                  console.log('No saved wallpapers found in localStorage');
+                  // If no saved wallpapers, use initial wallpapers
+                  setWallpapers(INITIAL_WALLPAPERS);
+                }
+              }
             }
           } catch (supabaseError) {
             console.error('Error loading from Supabase:', supabaseError);
-          }
-
-          // If no wallpapers loaded from Supabase, try IndexedDB
-          if (!loadedWallpapers || loadedWallpapers.length === 0) {
+            
+            // If Supabase fails, try IndexedDB
             if (indexedDBService.isIndexedDBSupported()) {
               console.log('IndexedDB is supported, loading wallpapers from IndexedDB');
               try {
-                loadedWallpapers = await indexedDBService.loadUserWallpapers(result.userId);
-                if (loadedWallpapers && loadedWallpapers.length > 0) {
+                const indexedDBWallpapers = await indexedDBService.loadUserWallpapers(result.userId);
+                if (indexedDBWallpapers && indexedDBWallpapers.length > 0) {
                   console.log('Found saved wallpapers in IndexedDB');
-                  console.log('Number of wallpapers loaded from IndexedDB:', loadedWallpapers.length);
-                  setWallpapers(loadedWallpapers);
+                  console.log('Number of wallpapers loaded from IndexedDB:', indexedDBWallpapers.length);
+                  setWallpapers(indexedDBWallpapers);
+                  
+                  // Sync IndexedDB data to localStorage
+                  try {
+                    localStorage.setItem(`pixelWalls_${result.userId}`, JSON.stringify(indexedDBWallpapers));
+                    console.log('Wallpapers saved to localStorage from IndexedDB');
+                  } catch (localStorageError) {
+                    console.error('Failed to save wallpapers to localStorage from IndexedDB:', localStorageError);
+                  }
                 } else {
                   console.log('No saved wallpapers found in IndexedDB');
+                  
+                  // Try localStorage
+                  const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
+                  if (savedWallpapers) {
+                    console.log('Found saved wallpapers in localStorage');
+                    try {
+                      const parsedWallpapers = JSON.parse(savedWallpapers);
+                      console.log('Parsed wallpapers from localStorage:', parsedWallpapers);
+                      console.log('Number of wallpapers loaded from localStorage:', parsedWallpapers.length);
+                      setWallpapers(parsedWallpapers);
+                      
+                      // Sync localStorage data to IndexedDB
+                      if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
+                        try {
+                          await indexedDBService.saveUserWallpapers(result.userId, parsedWallpapers);
+                          console.log('Wallpapers saved to IndexedDB from localStorage');
+                        } catch (saveError) {
+                          console.error('Failed to save wallpapers to IndexedDB after loading from localStorage:', saveError);
+                        }
+                      }
+                    } catch (e) {
+                      console.error('Failed to parse saved wallpapers:', e);
+                      // Fall back to initial wallpapers if parsing fails
+                      setWallpapers(INITIAL_WALLPAPERS);
+                    }
+                  } else {
+                    console.log('No saved wallpapers found in localStorage');
+                    // If no saved wallpapers, use initial wallpapers
+                    setWallpapers(INITIAL_WALLPAPERS);
+                  }
                 }
               } catch (indexedDBError) {
                 console.error('Error loading from IndexedDB:', indexedDBError);
-              }
-            }
-          }
-
-          // If no wallpapers loaded from IndexedDB, try localStorage
-          if (!loadedWallpapers || loadedWallpapers.length === 0) {
-            console.log('IndexedDB not supported or no data found, falling back to localStorage');
-            const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
-            if (savedWallpapers) {
-              console.log('Found saved wallpapers in localStorage');
-              try {
-                const parsedWallpapers = JSON.parse(savedWallpapers);
-                console.log('Parsed wallpapers from localStorage:', parsedWallpapers);
-                console.log('Number of wallpapers loaded from localStorage:', parsedWallpapers.length);
-                setWallpapers(parsedWallpapers);
-
-                // If IndexedDB is supported, also save to IndexedDB for future use
-                if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
+                
+                // Fallback to localStorage
+                const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
+                if (savedWallpapers) {
+                  console.log('Found saved wallpapers in localStorage');
                   try {
-                    await indexedDBService.saveUserWallpapers(result.userId, parsedWallpapers);
-                    console.log('Wallpapers saved to IndexedDB from localStorage');
-                  } catch (saveError) {
-                    console.error('Failed to save wallpapers to IndexedDB after loading from localStorage:', saveError);
+                    const parsedWallpapers = JSON.parse(savedWallpapers);
+                    console.log('Parsed wallpapers from localStorage:', parsedWallpapers);
+                    console.log('Number of wallpapers loaded from localStorage:', parsedWallpapers.length);
+                    setWallpapers(parsedWallpapers);
+                    
+                    // Sync localStorage data to IndexedDB
+                    if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
+                      try {
+                        await indexedDBService.saveUserWallpapers(result.userId, parsedWallpapers);
+                        console.log('Wallpapers saved to IndexedDB from localStorage');
+                      } catch (saveError) {
+                        console.error('Failed to save wallpapers to IndexedDB after loading from localStorage:', saveError);
+                      }
+                    }
+                  } catch (e) {
+                    console.error('Failed to parse saved wallpapers:', e);
+                    // Fall back to initial wallpapers if parsing fails
+                    setWallpapers(INITIAL_WALLPAPERS);
                   }
+                } else {
+                  console.log('No saved wallpapers found in localStorage');
+                  // If no saved wallpapers, use initial wallpapers
+                  setWallpapers(INITIAL_WALLPAPERS);
                 }
-              } catch (e) {
-                console.error('Failed to parse saved wallpapers:', e);
-                // Fall back to initial wallpapers if parsing fails
-                setWallpapers(INITIAL_WALLPAPERS);
               }
             } else {
-              console.log('No saved wallpapers found in localStorage');
-              // If no saved wallpapers, use initial wallpapers
-              setWallpapers(INITIAL_WALLPAPERS);
+              // Fallback to localStorage if IndexedDB is not supported
+              const savedWallpapers = localStorage.getItem(`pixelWalls_${result.userId}`);
+              if (savedWallpapers) {
+                console.log('Found saved wallpapers in localStorage');
+                try {
+                  const parsedWallpapers = JSON.parse(savedWallpapers);
+                  console.log('Parsed wallpapers from localStorage:', parsedWallpapers);
+                  console.log('Number of wallpapers loaded from localStorage:', parsedWallpapers.length);
+                  setWallpapers(parsedWallpapers);
+                  
+                  // Sync localStorage data to IndexedDB
+                  if (indexedDBService.isIndexedDBSupported() && parsedWallpapers.length > 0) {
+                    try {
+                      await indexedDBService.saveUserWallpapers(result.userId, parsedWallpapers);
+                      console.log('Wallpapers saved to IndexedDB from localStorage');
+                    } catch (saveError) {
+                      console.error('Failed to save wallpapers to IndexedDB after loading from localStorage:', saveError);
+                    }
+                  }
+                } catch (e) {
+                  console.error('Failed to parse saved wallpapers:', e);
+                  // Fall back to initial wallpapers if parsing fails
+                  setWallpapers(INITIAL_WALLPAPERS);
+                }
+              } else {
+                console.log('No saved wallpapers found in localStorage');
+                // If no saved wallpapers, use initial wallpapers
+                setWallpapers(INITIAL_WALLPAPERS);
+              }
             }
           }
         } catch (loadError) {
@@ -848,25 +1242,35 @@ const App: React.FC = () => {
       // Artificial delay to let the skeleton animation play a bit longer for better feel
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      setWallpapers((prev) => [newWallpaper, ...prev]);
-
-      // Clear the prompt input after successful generation
-      clearPrompt();
-
-      // Save to Supabase
+      // Save to Supabase first to ensure cross-device sync
       const userId = localStorage.getItem('userId');
       if (userId) {
         try {
           const savedToSupabase = await saveUserWallpaperToSupabase(userId, newWallpaper);
           if (savedToSupabase) {
             console.log('Wallpaper saved to Supabase');
+            
+            // Update local state to include the newly saved wallpaper
+            setWallpapers((prev) => [newWallpaper, ...prev]);
           } else {
             console.error('Failed to save wallpaper to Supabase');
+            
+            // If Supabase fails, still add to local state but log the error
+            setWallpapers((prev) => [newWallpaper, ...prev]);
           }
         } catch (error) {
           console.error('Failed to save wallpaper to Supabase:', error);
+          
+          // If Supabase fails, still add to local state but log the error
+          setWallpapers((prev) => [newWallpaper, ...prev]);
         }
+      } else {
+        // If no userId, just update local state
+        setWallpapers((prev) => [newWallpaper, ...prev]);
       }
+
+      // Clear the prompt input after successful generation
+      clearPrompt();
 
       // Increment generation count for Basic Premium users
       if (currentUserPlan === 'basic') {
@@ -1228,6 +1632,50 @@ const App: React.FC = () => {
   // State for mobile drawer menu
   const [showMobileDrawer, setShowMobileDrawer] = useState(false);
 
+  // Function to manually sync wallpapers from Supabase
+  const syncWallpapersFromSupabase = async () => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      console.log('No user ID found, cannot sync wallpapers');
+      return;
+    }
+    
+    try {
+      console.log('Manually syncing wallpapers from Supabase for user:', userId);
+      const supabaseWallpapers = await fetchUserWallpapersFromSupabase(userId);
+      
+      if (supabaseWallpapers && supabaseWallpapers.length > 0) {
+        console.log('Synced wallpapers from Supabase:', supabaseWallpapers.length);
+        setWallpapers(supabaseWallpapers);
+        
+        // Update local storage and IndexedDB with the synced data
+        try {
+          localStorage.setItem(`pixelWalls_${userId}`, JSON.stringify(supabaseWallpapers));
+          console.log('Wallpapers saved to localStorage from sync');
+        } catch (localStorageError) {
+          console.error('Failed to save wallpapers to localStorage from sync:', localStorageError);
+        }
+
+        if (indexedDBService.isIndexedDBSupported()) {
+          try {
+            await indexedDBService.saveUserWallpapers(userId, supabaseWallpapers);
+            console.log('Wallpapers saved to IndexedDB from sync');
+          } catch (saveError) {
+            console.error('Failed to save wallpapers to IndexedDB from sync:', saveError);
+          }
+        }
+        
+        alert(`Successfully synced ${supabaseWallpapers.length} wallpapers from the cloud!`);
+      } else {
+        console.log('No wallpapers found in Supabase during sync');
+        alert('No wallpapers found in the cloud. Your local wallpapers are still available.');
+      }
+    } catch (error) {
+      console.error('Error during manual sync:', error);
+      alert('Failed to sync wallpapers from the cloud. Please check your connection and try again.');
+    }
+  };
+
   const handlePurchase = async (planId: string) => {
     console.log('=== HANDLE PURCHASE DEBUG INFO ===');
     console.log('handlePurchase called with planId:', planId);
@@ -1380,8 +1828,15 @@ const App: React.FC = () => {
           <LoginPage onLogin={handleLogin} />
         ) : (
           <div className="fixed inset-0 flex bg-zinc-950 font-sans text-gray-100 selection:bg-purple-500/30 overflow-hidden">
-
+            {/* Warning banner when Supabase is not configured for cross-device sync */}
+            {!isSupabaseConfigured() && (
+              <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-yellow-500/20 border border-yellow-500/30 text-yellow-200 px-4 py-2 rounded-lg text-sm text-center max-w-md">
+                <p>Cross-device sync unavailable. Generated wallpapers will only be visible on this device.</p>
+                <p className="mt-1">Contact admin to configure cloud storage.</p>
+              </div>
+            )}
             {/* API Key Dialog Overlay */}
+            <div className="pt-16"></div> {/* Spacer to account for warning banner */}
             <AnimatePresence>
               {showApiKeyDialog && (
                 <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />
@@ -1912,6 +2367,7 @@ const App: React.FC = () => {
               }}
               onLogout={handleLogout}
               currentUserPlan={currentUserPlan}
+              onSync={syncWallpapersFromSupabase}
             />
           </div>
         )}

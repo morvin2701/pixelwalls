@@ -8,6 +8,7 @@ interface MobileDrawerMenuProps {
   onNavigate: (tab: string) => void;
   onLogout: () => void;
   currentUserPlan: 'base' | 'basic' | 'pro';
+  onSync?: () => void; // Added sync function prop
 }
 
 const MobileDrawerMenu: React.FC<MobileDrawerMenuProps> = ({
@@ -15,7 +16,8 @@ const MobileDrawerMenu: React.FC<MobileDrawerMenuProps> = ({
   onClose,
   onNavigate,
   onLogout,
-  currentUserPlan
+  currentUserPlan,
+  onSync  // Added sync function
 }) => {
   const [isClosing, setIsClosing] = useState(false);
 
@@ -40,10 +42,19 @@ const MobileDrawerMenu: React.FC<MobileDrawerMenuProps> = ({
   };
 
   const handleMenuClick = (tab: string) => {
-    onNavigate(tab);
-    setTimeout(() => {
-      onClose();
-    }, 300);
+    if (tab === 'sync') {
+      if (onSync) {
+        onSync();
+      }
+      setTimeout(() => {
+        onClose();
+      }, 300);
+    } else {
+      onNavigate(tab);
+      setTimeout(() => {
+        onClose();
+      }, 300);
+    }
   };
 
   const menuItems = [
@@ -55,6 +66,7 @@ const MobileDrawerMenu: React.FC<MobileDrawerMenuProps> = ({
     { id: 'organizer', label: 'Wallpaper Organizer', icon: Tag },
     { id: 'analytics', label: 'Analytics Dashboard', icon: BarChart3 },
     { id: 'premium', label: 'Premium Features', icon: Crown },
+    { id: 'sync', label: 'Sync Wallpapers', icon: Compass }, // Added sync option
   ];
 
   return (

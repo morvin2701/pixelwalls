@@ -5,9 +5,10 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-console.log('Supabase environment variables (Vercel format):', { supabaseUrl, supabaseAnonKey });
-
-console.log('Supabase environment variables:', { supabaseUrl, supabaseAnonKey });
+console.log('Supabase environment variables (Vercel format):', { 
+  hasSupabaseUrl: !!supabaseUrl, 
+  hasSupabaseAnonKey: !!supabaseAnonKey 
+});
 
 // Create a dummy Supabase client if credentials are missing
 let supabase;
@@ -16,14 +17,25 @@ try {
   // Validate that we have the required environment variables
   if (!supabaseUrl || !supabaseAnonKey) {
     console.warn('Missing Supabase environment variables. Creating dummy client.');
-    // Create a dummy client that doesn't make actual requests
+    // Create a dummy client that mimics Supabase API but doesn't make actual requests
     supabase = {
+      from: (table) => ({
+        select: (columns = '*') => ({
+          eq: (column, value) => Promise.resolve({ data: [], error: null }),
+          order: (column, options) => Promise.resolve({ data: [], error: null })
+        }),
+        insert: (data) => Promise.resolve({ error: null }),
+        update: (data) => ({
+          eq: (column, value) => Promise.resolve({ error: null })
+        }),
+        delete: () => ({
+          eq: (column, value) => Promise.resolve({ error: null })
+        })
+      }),
       storage: {
-        listBuckets: () => Promise.resolve({ data: [], error: null }),
-        createBucket: () => Promise.resolve({ data: null, error: null }),
-        from: () => ({
-          upload: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-          getPublicUrl: () => ({ data: { publicUrl: '' } })
+        from: (bucket) => ({
+          upload: (path, file, options) => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+          getPublicUrl: (path) => ({ data: { publicUrl: '' } })
         })
       }
     };
@@ -37,18 +49,29 @@ try {
   console.error('Error creating Supabase client:', error);
   // Fallback to dummy client
   supabase = {
+    from: (table) => ({
+      select: (columns = '*') => ({
+        eq: (column, value) => Promise.resolve({ data: [], error: null }),
+        order: (column, options) => Promise.resolve({ data: [], error: null })
+      }),
+      insert: (data) => Promise.resolve({ error: null }),
+      update: (data) => ({
+        eq: (column, value) => Promise.resolve({ error: null })
+      }),
+      delete: () => ({
+        eq: (column, value) => Promise.resolve({ error: null })
+      })
+    }),
     storage: {
-      listBuckets: () => Promise.resolve({ data: [], error: null }),
-      createBucket: () => Promise.resolve({ data: null, error: null }),
-      from: () => ({
-        upload: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-        getPublicUrl: () => ({ data: { publicUrl: '' } })
+      from: (bucket) => ({
+        upload: (path, file, options) => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        getPublicUrl: (path) => ({ data: { publicUrl: '' } })
       })
     }
   };
 }
 
-console.log('Final Supabase client:', supabase);
+console.log('Final Supabase client initialized');
 
 // Export default for compatibility
 export default supabase
