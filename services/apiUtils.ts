@@ -1,22 +1,26 @@
 // Utility functions for API calls
 
 // Helper function to determine if we're in development
+// Helper function to determine if we're in development
 const isDevelopment = () => {
-  // Check if we're running on localhost
-  return window.location.hostname === 'localhost' || 
-         window.location.hostname === '127.0.0.1' ||
-         window.location.hostname.startsWith('localhost:') ||
-         window.location.port.startsWith('300') ||  // This will match 3000, 3001, 3002, etc.
-         window.location.port === '5173' ||
-         window.location.port === '3000';  // Add port 3000 as development port
+  // Check if we're running on localhost or local network
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('localhost:') ||
+    hostname.startsWith('192.168.') || // Local network
+    hostname.startsWith('10.') ||      // Local network
+    window.location.port.startsWith('300') ||  // This will match 3000, 3001, 3002, etc.
+    window.location.port === '5173' ||
+    window.location.port === '3000';  // Add port 3000 as development port
 };
 
 // Helper function to get backend URL
 export const getBackendUrl = () => {
   // For production, use your Render backend URL
-  // For development, use localhost:5000
-  return isDevelopment() 
-    ? 'http://localhost:5000' 
+  // For development, use hostname:5000 (supports mobile/local network)
+  return isDevelopment()
+    ? `http://${window.location.hostname}:5000`
     : 'https://pixelwallsbackend.onrender.com';  // Use your Render backend URL
 };
 
@@ -29,11 +33,11 @@ export const isProduction = () => {
 export const getBackendUrlWithEnvCheck = () => {
   // Check for environment variable first (if available)
   const backendUrl = process.env.REACT_APP_BACKEND_URL || process.env.VITE_BACKEND_URL;
-  
+
   if (backendUrl) {
     return backendUrl;
   }
-  
+
   // Fallback to our detection logic
   return getBackendUrl();
 };

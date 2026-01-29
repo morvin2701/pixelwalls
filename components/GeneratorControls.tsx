@@ -10,7 +10,9 @@ import { Wand2, Sparkles, Monitor, Smartphone, Square, Zap, History, Trash2, X, 
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Import the enhancePrompt service
+// Import the enhancePrompt service
 import { enhancePrompt } from '../services/geminiService';
+import { getBackendUrl } from '../services/apiUtils';
 
 interface GeneratorControlsProps {
   onGenerate: (params: GenerationParams, clearPrompt: () => void) => void;
@@ -85,18 +87,7 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
         if (userId) {
           try {
             // Get backend URL
-            const isDevelopment = () => {
-              return window.location.hostname === 'localhost' ||
-                window.location.hostname === '127.0.0.1' ||
-                window.location.hostname.startsWith('localhost:') ||
-                window.location.port.startsWith('300') ||
-                window.location.port === '5173' ||
-                window.location.port === '3000';
-            };
-
-            const backendUrl = isDevelopment()
-              ? 'http://localhost:5000'
-              : 'https://pixelwallsbackend.onrender.com';
+            const backendUrl = getBackendUrl();
 
             // Fetch generation limit from backend
             const response = await fetch(`${backendUrl}/user-generation-limit/${userId}`);
@@ -247,8 +238,8 @@ export const GeneratorControls: React.FC<GeneratorControlsProps> = ({ onGenerate
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setUseEnhancer(!useEnhancer)}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${useEnhancer
-                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                    : 'bg-zinc-900 border border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'
+                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                  : 'bg-zinc-900 border border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'
                   }`}
               >
                 <Wand2 className="w-3 h-3" />

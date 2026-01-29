@@ -24,7 +24,7 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     // Allow requests from localhost and your Vercel deployment
     const allowedOrigins = [
       'http://localhost:5173',
@@ -33,13 +33,16 @@ app.use(cors({
       'https://pixelwalls-wzsz.vercel.app',
       'https://pixelwallsbackend.onrender.com'
     ];
-    
+
     // Also allow any render.com subdomain
     if (origin && (origin.endsWith('.onrender.com') || origin.endsWith('.vercel.app'))) {
       return callback(null, true);
     }
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else if (/^http:\/\/(192\.168\.|10\.|172\.)/.test(origin)) {
+      // Allow local network IPs for mobile testing
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
@@ -76,28 +79,28 @@ async function initializeDatabase() {
   try {
     console.log('Attempting to connect to SQL Server...');
     console.log('SQL Server configuration:', JSON.stringify(sqlConfig, null, 2));
-    
+
     // Add connection retry logic
     let retries = 3;
     while (retries > 0) {
       try {
         dbPool = await sql.connect(sqlConfig);
         console.log('Connected to SQL Server successfully');
-        
+
         // Test the connection by running a simple query
         const result = await dbPool.request().query('SELECT 1 as test');
         console.log('Database connection test successful:', result.recordset);
         return true;
       } catch (connectError) {
         retries--;
-        console.error(`Database connection attempt failed (${3-retries}/3):`, connectError.message);
+        console.error(`Database connection attempt failed (${3 - retries}/3):`, connectError.message);
         if (retries > 0) {
           console.log(`Retrying in 2 seconds... (${retries} attempts left)`);
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
     }
-    
+
     console.error('Failed to connect to SQL Server after 3 attempts');
     return false;
   } catch (error) {
@@ -106,10 +109,10 @@ async function initializeDatabase() {
     console.error('Error message:', error.message);
     console.error('Error code:', error.code);
     console.error('Stack trace:', error.stack);
-    
+
     // Log the full error object
     console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-    
+
     return false;
   }
 }
@@ -140,25 +143,25 @@ app.post('/create-order', async (req, res) => {
   try {
     console.log('=== CREATE ORDER REQUEST ===');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
+
     const { planId, userId } = req.body;
-    
+
     // Validate inputs
     if (!planId || !userId) {
       return res.status(400).json({ error: 'Missing required parameters: planId and userId' });
     }
-    
+
     // Validate plan
     const plan = premiumPlans[planId];
     if (!plan) {
       return res.status(400).json({ error: 'Invalid plan selected' });
     }
-    
+
     console.log('Creating order for plan:', plan.name);
     console.log('Plan ID requested:', planId);
     console.log('Original plan amount in paise:', plan.amount);
     console.log('Original plan amount in rupees:', plan.amount / 100);
-    
+
     // Force correct amounts for each plan - SAFEGUARD
     let correctedAmount = plan.amount;
     if (planId === 'pro') {
@@ -168,7 +171,7 @@ app.post('/create-order', async (req, res) => {
       correctedAmount = 30000; // ₹300
       console.log('SAFEGUARD: Correcting Basic plan amount to 30000 paise (₹300)');
     }
-    
+
     // DOUBLE CHECK: Ensure the amount is correct
     if (planId === 'pro' && correctedAmount !== 100000) {
       console.error('CRITICAL ERROR: Pro plan amount is incorrect:', correctedAmount);
@@ -178,45 +181,45 @@ app.post('/create-order', async (req, res) => {
       console.error('CRITICAL ERROR: Basic plan amount is incorrect:', correctedAmount);
       correctedAmount = 30000; // Force correct amount
     }
-    
+
     console.log('FINAL CORRECTED AMOUNT IN PAISE:', correctedAmount);
     console.log('FINAL CORRECTED AMOUNT IN RUPEES:', correctedAmount / 100);
-    
+
     // Initialize Razorpay instance
     const razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
-    
+
     // Create Razorpay order
     // Fix: Shorten the receipt ID to be under 40 characters
     const receiptId = `receipt_${Date.now()}`.substring(0, 40);
-    
+
     const options = {
       amount: correctedAmount,
       currency: plan.currency,
       receipt: receiptId,
     };
-    
+
     console.log('Razorpay order options:', JSON.stringify(options, null, 2));
-    
+
     const order = await razorpay.orders.create(options);
     console.log('Order created successfully:', JSON.stringify(order, null, 2));
-    
+
     // SAVE TO DATABASE - THIS IS THE CRITICAL PART
     if (dbPool) {
       try {
         console.log('=== SAVING TO DATABASE ===');
-        
+
         // Ensure user exists - IMPROVED VERSION
         try {
           console.log('Checking if user exists:', userId);
           const userCheck = await dbPool.request()
             .input('user_id', sql.NVarChar, userId)
             .query('SELECT id, username FROM users WHERE id = @user_id');
-          
+
           console.log('User check result:', userCheck.recordset);
-          
+
           if (userCheck.recordset.length === 0) {
             console.log('User does not exist, creating new user:', userId);
             const createUserResult = await dbPool.request()
@@ -237,7 +240,7 @@ app.post('/create-order', async (req, res) => {
           });
           // Continue with payment history insertion even if user creation fails
         }
-        
+
         // Insert payment history - IMPROVED VERSION WITH BETTER ERROR HANDLING
         console.log('Inserting payment history for user:', userId);
         const insertRequest = dbPool.request()
@@ -250,14 +253,14 @@ app.post('/create-order', async (req, res) => {
           .input('status', sql.NVarChar, 'Pending')
           .input('razorpay_order_id', sql.NVarChar, order.id)
           .input('created_at', sql.DateTime2, new Date());
-        
+
         const insertResult = await insertRequest.query(`
           INSERT INTO payment_history 
           (id, user_id, plan_id, plan_name, amount, currency, status, razorpay_order_id, created_at)
           VALUES 
           (@id, @user_id, @plan_id, @plan_name, @amount, @currency, @status, @razorpay_order_id, @created_at)
         `);
-        
+
         console.log('Payment history saved to database. Rows affected:', insertResult.rowsAffected);
       } catch (dbError) {
         console.error('CRITICAL ERROR: Failed to save payment history to database:', dbError);
@@ -271,7 +274,7 @@ app.post('/create-order', async (req, res) => {
     } else {
       console.log('WARNING: Database not connected, skipping save');
     }
-    
+
     // Return response to frontend
     const response = {
       orderId: order.id,
@@ -285,7 +288,7 @@ app.post('/create-order', async (req, res) => {
         currency: plan.currency
       }
     };
-    
+
     console.log('=== FINAL BACKEND RESPONSE ===');
     console.log('ORDER ID:', response.orderId);
     console.log('AMOUNT IN PAISE:', response.amount);
@@ -295,21 +298,21 @@ app.post('/create-order', async (req, res) => {
     console.log('PLAN NAME:', response.plan.name);
     console.log('FULL RESPONSE:', JSON.stringify(response, null, 2));
     console.log('==============================');
-    
+
     res.json(response);
-    
+
     console.log('=== ORDER RESPONSE SENT ===');
   } catch (error) {
     console.error('CRITICAL ERROR creating order:');
     console.error('Error name:', error.name);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
-    
+
     // Log the full error object
     console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-    
-    res.status(500).json({ 
-      error: 'Failed to create order', 
+
+    res.status(500).json({
+      error: 'Failed to create order',
       details: error.message,
       name: error.name
     });
@@ -321,30 +324,30 @@ app.post('/verify-payment', async (req, res) => {
   try {
     console.log('=== VERIFY PAYMENT REQUEST ===');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
+
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId } = req.body;
-    
+
     // Validate inputs
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       console.error('Missing required parameters for payment verification');
       return res.status(400).json({ success: false, error: 'Missing required parameters' });
     }
-    
+
     // Verify payment signature
     console.log('Verifying signature with key secret:', process.env.RAZORPAY_KEY_SECRET ? 'SET' : 'NOT SET');
     const shasum = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET);
     shasum.update(`${razorpay_order_id}|${razorpay_payment_id}`);
     const digest = shasum.digest('hex');
-    
+
     console.log('Signature verification:', {
       received: razorpay_signature,
       calculated: digest,
       match: digest === razorpay_signature
     });
-    
+
     if (digest !== razorpay_signature) {
       console.error('Invalid signature');
-      
+
       // Update payment status to Rejected
       if (dbPool) {
         try {
@@ -353,7 +356,7 @@ app.post('/verify-payment', async (req, res) => {
           request.input('status', sql.NVarChar, 'Rejected');
           request.input('verified_at', sql.DateTime2, new Date());
           request.input('id', sql.NVarChar, razorpay_order_id);
-          
+
           const result = await request.query('UPDATE payment_history SET status = @status, verified_at = @verified_at WHERE id = @id');
           console.log('Payment history updated with rejected status. Rows affected:', result.rowsAffected);
         } catch (dbError) {
@@ -365,12 +368,12 @@ app.post('/verify-payment', async (req, res) => {
           });
         }
       }
-      
+
       return res.status(400).json({ success: false, error: 'Invalid signature' });
     }
-    
+
     console.log('Payment verification successful');
-    
+
     // Update payment status to Received
     if (dbPool) {
       try {
@@ -381,7 +384,7 @@ app.post('/verify-payment', async (req, res) => {
         request.input('razorpay_payment_id', sql.NVarChar, razorpay_payment_id);
         request.input('razorpay_signature', sql.NVarChar, razorpay_signature);
         request.input('id', sql.NVarChar, razorpay_order_id);
-        
+
         const result = await request.query(`
           UPDATE payment_history 
           SET status = @status, verified_at = @verified_at, 
@@ -389,7 +392,7 @@ app.post('/verify-payment', async (req, res) => {
           WHERE id = @id
         `);
         console.log('Payment status updated to Received. Rows affected:', result.rowsAffected);
-        
+
         // Log if no rows were affected
         if (result.rowsAffected[0] === 0) {
           console.warn('Warning: No rows were updated. Payment history entry may not exist for order ID:', razorpay_order_id);
@@ -403,36 +406,36 @@ app.post('/verify-payment', async (req, res) => {
         });
       }
     }
-    
+
     const response = {
       success: true,
       orderId: razorpay_order_id,
       paymentId: razorpay_payment_id,
       signature: razorpay_signature
     };
-    
+
     console.log('=== VERIFICATION RESPONSE ===');
     console.log('SUCCESS:', response.success);
     console.log('ORDER ID:', response.orderId);
     console.log('PAYMENT ID:', response.paymentId);
     console.log('FULL RESPONSE:', JSON.stringify(response, null, 2));
     console.log('=============================');
-    
+
     res.json(response);
-    
+
     console.log('=== VERIFICATION RESPONSE SENT ===');
   } catch (error) {
     console.error('Error verifying payment:');
     console.error('Error name:', error.name);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
-    
+
     // Log the full error object
     console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-    
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to verify payment', 
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to verify payment',
       details: error.message,
       name: error.name
     });
@@ -446,13 +449,13 @@ app.post('/payment-failed', async (req, res) => {
   try {
     console.log('Received payment failed notification:', JSON.stringify(req.body, null, 2));
     const { razorpay_order_id, error, userId } = req.body; // Extract userId
-    
+
     // Validate inputs
     if (!razorpay_order_id) {
       console.error('Missing required parameter: razorpay_order_id');
       return res.status(400).json({ success: false, error: 'Missing required parameter: razorpay_order_id' });
     }
-    
+
     // Update payment history with rejected status
     if (dbPool) {
       try {
@@ -461,15 +464,15 @@ app.post('/payment-failed', async (req, res) => {
         request.input('status', sql.NVarChar, 'Rejected');
         request.input('verified_at', sql.DateTime2, new Date());
         request.input('id', sql.NVarChar, razorpay_order_id);
-        
+
         const result = await request.query(`
           UPDATE payment_history 
           SET status = @status, verified_at = @verified_at
           WHERE id = @id
         `);
-        
+
         console.log('Payment history updated with rejected status for failed payment. Rows affected:', result.rowsAffected);
-        
+
         // Log if no rows were affected
         if (result.rowsAffected[0] === 0) {
           console.warn('Warning: No rows were updated. Payment history entry may not exist for order ID:', razorpay_order_id);
@@ -484,15 +487,15 @@ app.post('/payment-failed', async (req, res) => {
         // Continue with response even if database update fails
       }
     }
-    
+
     console.log('Updated payment history for failed payment');
     res.json({ success: true });
   } catch (error) {
     console.error('Error handling failed payment:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to handle failed payment', 
-      details: error.message 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to handle failed payment',
+      details: error.message
     });
   }
 });
@@ -502,28 +505,28 @@ app.get('/user-payment-history/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     console.log(`Fetching payment history for user: ${userId}`);
-    
+
     // Validate inputs
     if (!userId) {
       console.error('Missing required parameter: userId');
       return res.status(400).json({ error: 'Missing required parameter: userId' });
     }
-    
+
     if (dbPool) {
       try {
         console.log('Fetching payment history from database...');
         const request = dbPool.request();
         request.input('user_id', sql.NVarChar, userId);
-        
+
         const result = await request.query(`
           SELECT * FROM payment_history 
           WHERE user_id = @user_id 
           ORDER BY created_at DESC
         `);
-        
+
         console.log('Payment history fetched from database. Rows returned:', result.recordset.length);
         console.log('Payment history data:', result.recordset);
-        
+
         // Ensure we always return an array
         const paymentHistory = Array.isArray(result.recordset) ? result.recordset : [];
         res.json(paymentHistory);
@@ -553,19 +556,19 @@ app.get('/user-plan/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     console.log(`Fetching plan for user: ${userId}`);
-    
+
     // Validate inputs
     if (!userId) {
       console.error('Missing required parameter: userId');
       return res.status(400).json({ error: 'Missing required parameter: userId' });
     }
-    
+
     if (dbPool) {
       try {
         console.log('Fetching user plan from database...');
         const request = dbPool.request();
         request.input('user_id', sql.NVarChar, userId);
-        
+
         // For now, we'll return the user's most recent payment as their current plan
         // In a real implementation, you might have a separate user_plans table
         const result = await request.query(`
@@ -573,9 +576,9 @@ app.get('/user-plan/:userId', async (req, res) => {
           WHERE user_id = @user_id AND status = 'Received'
           ORDER BY created_at DESC
         `);
-        
+
         console.log('User plan fetched from database. Rows returned:', result.recordset.length);
-        
+
         if (result.recordset.length > 0) {
           const latestPayment = result.recordset[0];
           res.json({
@@ -620,14 +623,14 @@ async function getUserGenerationCount(userId) {
       console.log('Database not connected, returning default count');
       return 0;
     }
-    
+
     const request = dbPool.request();
     request.input('user_id', sql.NVarChar, userId);
-    
+
     const result = await request.query(`
       SELECT basic_plan_count FROM user_generation_counts WHERE user_id = @user_id
     `);
-    
+
     if (result.recordset.length > 0) {
       return result.recordset[0].basic_plan_count;
     } else {
@@ -652,16 +655,16 @@ async function incrementUserGenerationCount(userId) {
       console.log('Database not connected, cannot increment count');
       return false;
     }
-    
+
     const request = dbPool.request();
     request.input('user_id', sql.NVarChar, userId);
-    
+
     const result = await request.query(`
       UPDATE user_generation_counts 
       SET basic_plan_count = basic_plan_count + 1 
       WHERE user_id = @user_id
     `);
-    
+
     // If no rows were affected, the user doesn't have a record yet
     if (result.rowsAffected[0] === 0) {
       // Create a new record for the user
@@ -671,7 +674,7 @@ async function incrementUserGenerationCount(userId) {
         INSERT INTO user_generation_counts (user_id, basic_plan_count) VALUES (@user_id, 1)
       `);
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error incrementing user generation count:', error);
@@ -683,11 +686,11 @@ async function incrementUserGenerationCount(userId) {
 app.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
-    
+
     if (dbPool) {
       try {
         // Check if user already exists
@@ -696,25 +699,25 @@ app.post('/register', async (req, res) => {
         const checkResult = await checkRequest.query(`
           SELECT COUNT(*) as count FROM users WHERE username = @username
         `);
-        
+
         if (checkResult.recordset[0].count > 0) {
           return res.status(400).json({ error: 'User already exists' });
         }
-        
+
         // Create new user
         const createUserRequest = dbPool.request();
         const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         createUserRequest.input('id', sql.NVarChar, userId);
         createUserRequest.input('username', sql.NVarChar, username);
         createUserRequest.input('created_at', sql.DateTime2, new Date());
-        
+
         await createUserRequest.query(`
           INSERT INTO users (id, username, created_at)
           VALUES (@id, @username, @created_at)
         `);
-        
+
         console.log('User registered successfully:', username);
-        
+
         // Create an entry in user_generation_counts table
         try {
           const insertCountRequest = dbPool.request();
@@ -726,9 +729,9 @@ app.post('/register', async (req, res) => {
         } catch (insertError) {
           console.error('Error creating generation count entry for new user:', insertError);
         }
-        
-        res.json({ 
-          success: true, 
+
+        res.json({
+          success: true,
           userId: userId,
           username: username,
           message: 'User registered successfully'
@@ -750,15 +753,15 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
-    
+
     // For demo purposes, we'll accept any username/password combination
     // In a real application, you would hash and verify the password
     console.log(`Login attempt for user: ${username}`);
-    
+
     if (dbPool) {
       try {
         // Check if user exists in the database
@@ -767,7 +770,7 @@ app.post('/login', async (req, res) => {
         const checkResult = await checkRequest.query(`
           SELECT id, username FROM users WHERE username = @username
         `);
-        
+
         let userId;
         if (checkResult.recordset.length > 0) {
           // User exists, get their ID
@@ -780,14 +783,14 @@ app.post('/login', async (req, res) => {
           createUserRequest.input('id', sql.NVarChar, userId);
           createUserRequest.input('username', sql.NVarChar, username);
           createUserRequest.input('created_at', sql.DateTime2, new Date());
-          
+
           await createUserRequest.query(`
             INSERT INTO users (id, username, created_at)
             VALUES (@id, @username, @created_at)
           `);
-          
+
           console.log(`New user ${username} created in database with ID: ${userId}`);
-          
+
           // Create an entry in user_generation_counts table
           try {
             const insertCountRequest = dbPool.request();
@@ -800,10 +803,10 @@ app.post('/login', async (req, res) => {
             console.error('Error creating generation count entry for new user:', insertError);
           }
         }
-        
+
         console.log(`User ${username} logged in successfully`);
-        res.json({ 
-          success: true, 
+        res.json({
+          success: true,
           userId: userId,
           username: username,
           message: 'Login successful'
@@ -812,8 +815,8 @@ app.post('/login', async (req, res) => {
         console.error('Database error during login:', dbError);
         // Still allow login even if database operation fails
         const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        res.json({ 
-          success: true, 
+        res.json({
+          success: true,
           userId: userId,
           username: username,
           message: 'Login successful'
@@ -823,8 +826,8 @@ app.post('/login', async (req, res) => {
       // Fallback if database is not available
       console.log('Database not available, using fallback login');
       const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         userId: userId,
         username: username,
         message: 'Login successful'
@@ -834,8 +837,8 @@ app.post('/login', async (req, res) => {
     console.error('Error during login:', error);
     // Still allow login even if there's an error
     const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       userId: userId,
       username: req.body.username || 'unknown',
       message: 'Login successful'
@@ -848,26 +851,26 @@ app.get('/user-generation-limit/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     console.log(`Checking generation limit for user: ${userId}`);
-    
+
     // Validate inputs
     if (!userId) {
       console.error('Missing required parameter: userId');
       return res.status(400).json({ error: 'Missing required parameter: userId' });
     }
-    
+
     // Get user's current plan by checking their most recent payment
     let userPlan = null;
     if (dbPool) {
       try {
         const request = dbPool.request();
         request.input('user_id', sql.NVarChar, userId);
-        
+
         const result = await request.query(`
           SELECT TOP 1 * FROM payment_history 
           WHERE user_id = @user_id AND status = 'Received'
           ORDER BY created_at DESC
         `);
-        
+
         if (result.recordset.length > 0) {
           userPlan = result.recordset[0].plan_id;
         }
@@ -875,19 +878,19 @@ app.get('/user-generation-limit/:userId', async (req, res) => {
         console.error('Error fetching user plan from payment history:', dbError);
       }
     }
-    
+
     // If we couldn't determine the plan from payment history, 
     // check if the user exists in the users table (they should exist if they're logged in)
     if (!userPlan && dbPool) {
       try {
         const request = dbPool.request();
         request.input('user_id', sql.NVarChar, userId);
-        
+
         // Check if user exists
         const result = await request.query(`
           SELECT id FROM users WHERE id = @user_id
         `);
-        
+
         if (result.recordset.length > 0) {
           // User exists, assume they have a basic plan if the frontend is calling this
           // The frontend only calls this for basic plan users
@@ -897,7 +900,7 @@ app.get('/user-generation-limit/:userId', async (req, res) => {
         console.error('Error checking if user exists:', dbError);
       }
     }
-    
+
     // If user is on Pro plan, no limit
     if (userPlan === 'pro') {
       return res.json({
@@ -906,12 +909,12 @@ app.get('/user-generation-limit/:userId', async (req, res) => {
         message: 'Pro plan has unlimited generations'
       });
     }
-    
+
     // If user is on Basic plan, check limit
     if (userPlan === 'basic') {
       const generationCount = await getUserGenerationCount(userId);
       const limit = 10; // Basic plan limit
-      
+
       if (generationCount >= limit) {
         return res.json({
           limitExceeded: true,
@@ -931,7 +934,7 @@ app.get('/user-generation-limit/:userId', async (req, res) => {
         });
       }
     }
-    
+
     // If no plan or base plan
     return res.json({
       limitExceeded: true,
@@ -949,26 +952,26 @@ app.post('/increment-generation-count/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     console.log(`Incrementing generation count for user: ${userId}`);
-    
+
     // Validate inputs
     if (!userId) {
       console.error('Missing required parameter: userId');
       return res.status(400).json({ error: 'Missing required parameter: userId' });
     }
-    
+
     // Get user's current plan by checking their most recent payment
     let userPlan = null;
     if (dbPool) {
       try {
         const request = dbPool.request();
         request.input('user_id', sql.NVarChar, userId);
-        
+
         const result = await request.query(`
           SELECT TOP 1 * FROM payment_history 
           WHERE user_id = @user_id AND status = 'Received'
           ORDER BY created_at DESC
         `);
-        
+
         if (result.recordset.length > 0) {
           userPlan = result.recordset[0].plan_id;
         }
@@ -976,20 +979,20 @@ app.post('/increment-generation-count/:userId', async (req, res) => {
         console.error('Error fetching user plan from payment history:', dbError);
       }
     }
-    
+
     // If we couldn't determine the plan from payment history, 
     // check if the user exists in the users table (they should exist if they're logged in)
     if (!userPlan && dbPool) {
       try {
         const request = dbPool.request();
         request.input('user_id', sql.NVarChar, userId);
-        
+
         // We'll increment the count for any user that exists in the database
         // The frontend will only call this for basic plan users
         const result = await request.query(`
           SELECT id FROM users WHERE id = @user_id
         `);
-        
+
         if (result.recordset.length > 0) {
           // User exists, we'll increment their count
           userPlan = 'basic'; // Assume basic since frontend only calls this for basic users
@@ -998,7 +1001,7 @@ app.post('/increment-generation-count/:userId', async (req, res) => {
         console.error('Error checking if user exists:', dbError);
       }
     }
-    
+
     // Only increment count for Basic plan users
     if (userPlan === 'basic') {
       const success = await incrementUserGenerationCount(userId);
@@ -1010,7 +1013,7 @@ app.post('/increment-generation-count/:userId', async (req, res) => {
         return res.status(500).json({ success: false, error: 'Failed to increment generation count' });
       }
     }
-    
+
     // For Pro plan users or users without a plan, don't increment count
     console.log(`No need to increment count for user: ${userId} (plan: ${userPlan || 'none'})`);
     return res.json({ success: true, message: 'No count increment needed' });
@@ -1027,7 +1030,7 @@ app.get('/health', (req, res) => {
 
 // Root route - Welcome message with API documentation
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Welcome to the PixelWalls Backend API',
     version: '1.0.0',
     description: 'This is the backend API for PixelWalls - an AI-powered wallpaper generation application',
@@ -1053,11 +1056,11 @@ app.get('/', (req, res) => {
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`=== SERVER STARTING ON PORT ${PORT} ===`);
   console.log(`Server timestamp: ${new Date().toISOString()}`);
-  
+
   // Initialize database connection
   console.log('Initializing database connection...');
   const dbConnected = await initializeDatabase();
-  
+
   if (dbConnected) {
     console.log('=== DATABASE CONNECTION ESTABLISHED ===');
     console.log('Database connection timestamp:', new Date().toISOString());
@@ -1066,7 +1069,7 @@ app.listen(PORT, '0.0.0.0', async () => {
     console.log('Server will continue running but database operations will be disabled');
     console.log('Database connection failure timestamp:', new Date().toISOString());
   }
-  
+
   console.log('=== SERVER READY TO HANDLE REQUESTS ===');
   console.log('Server ready timestamp:', new Date().toISOString());
   console.log('=====================================');
